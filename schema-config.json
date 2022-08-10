@@ -1,0 +1,16 @@
+{
+    "type": "object",
+    "properties": {
+      "allowed_ip_addresses": {
+        "type": "array",
+        "items": [
+          {
+            "type": "string"
+          }
+        ]
+      }
+    },
+    "required": [
+      "allowed_ip_addresses"
+    ]
+}

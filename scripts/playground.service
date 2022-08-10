@@ -1,0 +1,20 @@
+# /lib/systemd/system/playground.service 
+
+[Unit]
+Description=Gunicorn Playground Application
+After=network.target
+After=systemd-user-sessions.service
+After=network-online.target
+
+[Service]
+User=ai4eu
+Type=simple
+ExecStart=/home/ai4eu/playground-app/scripts/start_playground.sh
+TimeoutSec=30
+Restart=on-failure
+RestartSec=15
+StartLimitInterval=350
+StartLimitBurst=10
+
+[Install]
+WantedBy=multi-user.target

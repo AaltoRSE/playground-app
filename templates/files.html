@@ -1,0 +1,28 @@
+<html>
+<body>
+    <ul>
+    {% for file in files %}
+    <li>
+        <a href="/shared_folder?path={{ user_folder }}/{{ file }}" target="_blank">
+            {{ file }}
+        </a>
+    </li>
+    {% endfor %}
+</ul>
+<script>
+    function displayUI(url) {
+        console.info(url)
+        window.open(url,'popUpWindow','height=300,width=400,left=10,top=10,resizable=yes,scrollbars=yes,toolbar=yes,menubar=no,location=no,directories=no,status=yes');
+        return false;
+    }
+</script>
+ <script src="static/vendor/jquery/jquery.min.js"></script>
+  <script src="static/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Core plugin JavaScript-->
+  <script src="static/vendor/jquery-easing/jquery.easing.min.js"></script>
+
+  <!-- Custom scripts for all pages-->
+  <script src="static/js/sb-admin-2.js"></script>
+</body>
+</html>

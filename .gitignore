@@ -1,0 +1,8 @@
+/solutions/
+*.pyc
+*.zip
+config.json
+.idea
+/solutionZips/*
+*.log
+

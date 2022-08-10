@@ -1,0 +1,205 @@
+{% include 'admin-layout.html' %}
+{% from 'bootstrap/form.html' import render_form, render_field, render_form_row %}
+{% block content %}
+<head>
+    {% if 'refresh' in session and session.refresh|length > 0 %}
+        <meta http-equiv="refresh" content="{{ session.refresh.pop() }}">
+    {% endif %}
+    <style>
+      table {
+        border-collapse: collapse;
+      }
+      table thead th { border-bottom: 2px solid #004A82; }
+      table tr { border-bottom: 1px solid #004A82; }
+      th {
+        color: #004A82;
+        padding:5px
+      }
+      tr {
+        height: 80px;
+      }
+      th,
+      td {
+        width: 200px;
+        text-align: center;
+        padding: 5px 10px;
+      }
+      td:nth-child(1) {
+      color: #00008b;
+    }
+      h2 {
+        color: #4287f5;
+      }
+
+    table.myTable { width:400px;background-color:#eee;border:none; }
+    table.myTable th { background-color:#000;color:white;width:50%; }
+    table.myTable td, .myTable th { width: 150px;padding:5px;border:none; }
+
+    .noBorder {
+    border:none !important;
+}
+
+    .btn-label {
+	position: relative;
+	left: -12px;
+	display: inline-block;
+	padding: 6px 12px;
+	background: rgba(0, 0, 0, 0.15);
+	border-radius: 3px 0 0 3px;
+}
+
+.btn-labeled {
+	padding-top: 0;
+	padding-bottom: 0;
+}
+
+.btn {
+	margin-right: 20px;
+	margin-left: 20px;
+}
+    </style>
+</head>
+
+<div class="container-fluid">
+    <div class="col-lg-50 mb-10">
+
+              <!-- Approach -->
+          <div class="card shadow mb-10">
+            <div class="card-header py-3 bg-gradient-secondary">
+              <h6 class="m-0 font-weight-bold text-primary" style="color: #fff">Deployment: {{ pipeline.get_pipeline_name() }}</h6>
+            </div>
+            <div class="container-fluid">
+            <div class="card-body">
+              <!-- Page Heading -->
+                {% if pipeline.is_pipeline() %}
+                  <a href="/run"><button type="button" class="btn btn-labeled btn-success"><span class="btn-label"><i class="fas fa-play-circle"></i></span>Run</button></a>
+                {% endif %}
+                <a href="/reset"><button type="button" class="btn btn-labeled btn-warning"><span class="btn-label"><i class="fas fa-sync"></i></span>Reset</button></a>
+                <a href="/delete"><button type="button" class="btn btn-labeled btn-danger"><span class="btn-label"><i class="fas fa-minus-circle"></i></span>Delete</button></a>
+                <a href="/logs" target="_blank"><button type="button" class="btn btn-labeled btn-info"><span class="btn-label"><i class="fas fa-sign-out-alt"></i></span>Logs</button></a>
+                {% if pipeline.get_status() == 'Not Ready'%}
+                  <button type="button" class="btn btn-labeled btn-danger"><span class="btn-label"><i class="fas fa-cog"></i></span>Status: {{"Not Ready"}}</button>
+                {% else %}
+                  <button type="button" class="btn btn-labeled btn-success"><span class="btn-label"><i class="fas fa-cog"></i></span>Status: {{pipeline.get_status()}}</button>
+                {% endif %}
+                <table id='result' align="center">
+                  <thead>
+                    <tr>
+                        <th>Status Check</th>
+                        <th>Nodename</th>
+                        <th>Status Details</th>
+                        <th>Logs</th>
+                        <th>WebUI/Folder</th>
+                    </tr>
+                  </thead>
+
+                  <tbody class="bg-gradient-primary">
+                  {% set status = namespace(value=0) %}
+                  {% set webui = namespace(value=100) %}
+                  {% set log = namespace(value=200) %}
+                  {% for node in pipeline.get_pods_information() %}
+                    <tr>
+                      <td>{% if node['Status'] %}
+                          <img src="/static/img/tick.png" alt="" height=30 width=35></img>
+                          {% else %}
+                          <img src="/static/img/cross.png" alt="" height=30 width=35></img>
+                          {% endif %}
+                      </td>
+                      <td style="color: #004A82;">{{ node['Nodename'] }}</td>
+
+                      <td>
+                          <div id="{{ status.value }}" name="{{ status.value }}" hidden="True">{{ node['Status-details'] }}</div>
+                          <a href="#" onclick="displayStatus(document.getElementById({{ status.value }}).innerHTML);" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" ><i class="fa-sm text-white-50"></i>show</a></td>
+                      <td>
+                          {% if node['Logs'] == None %}
+                          <a class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" ><i class="fa-sm text-white-50"></i>view</a></td>
+                          {% else %}
+                          <div id="{{ log.value }}" name="{{ log.value }}" hidden="True">{{ node['Logs'] }}</div>
+                          <a href="#" onclick="displayLogs(document.getElementById({{ log.value }}).innerHTML);" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i class="fa-sm text-white-50"></i>view</a></td>
+                          {% endif %}
+                      <td>
+                          {% if node['Web-UI'] == None %}
+                          <a class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i class="fas fa-external-link-alt"></i></a></td>
+                          {% else %}
+                          <div id="{{ webui.value }}" name="{{ webui.value }}" hidden="True">{{ node['Web-UI'] }}</div>
+                          <a href="#" onclick="displayUI('http://'+document.getElementById({{ webui.value }}).innerHTML);" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i class="fas fa-external-link-alt"></i></a></td>
+                          {% endif %}
+                    </tr>
+                  {% set status.value = status.value + 1 %}
+                  {% set webui.value = webui.value + 1 %}
+                  {% set log.value = log.value + 1 %}
+                  {% endfor %}
+                  {% if pipeline.get_shared_folder_status() != None %}
+                    <tr>
+                        {% set folder = namespace(value=0) %}
+                        {% set path = namespace(value=5) %}
+                        <td>{% if pipeline.get_shared_folder_status() %}
+                          <img src="/static/img/tick.png" alt="" height=30 width=35></img>
+                          {% else %}
+                          <img src="/static/img/cross.png" alt="" height=30 width=35></img>
+                          {% endif %}
+                        </td>
+                        <td style="color: #004A82;">SharedFolder</td>
+                        <td>
+                          {% if pipeline.get_shared_folder_status() %}
+                          <a class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" ><i class="fa-sm text-white-50"></i>show</a></td>
+                          {% else %}
+                          <div id="{{ folder.value }}" name="{{ folder.value }}" hidden="True">{{ pipeline.get_shared_folder_status() }}</div>
+                          <a href="#" onclick="displayStatus(document.getElementById({{ folder.value }}).innerHTML);" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" ><i class="fa-sm text-white-50"></i>show</a></td>
+                          {% endif %}
+                        </td>
+                        <td></td>
+                        {% set folder.value = folder.value + 1 %}
+                        {% set path.value = path.value + 1 %}
+                        <td>
+                          {% if pipeline.get_shared_folder_status() %}
+                            <div id="{{ path.value }}" name="{{ path.value }}" hidden="True">127.0.0.250:8000</div>
+                            <a href="/shared_folder?path=" target="_blank" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i class="fas fa-external-link-alt"></i></a></td>
+                          {% else %}
+                            <a class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" ><i class="fas fa-external-link-alt"></i></a></td>
+                          {% endif %}
+                        </td>
+                    </tr>
+                  {% endif %}
+                  </tbody>
+                </table>
+            </div>
+          </div>
+          </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+  <!-- Bootstrap core JavaScript-->
+<script type="text/javascript">
+        function displayStatus(text) {
+	        var tab_status = window.open('/status', '_blank');
+            tab_status.document.write('<pre>'+text+'</pre>');
+            tab_status.document.close();
+	        return false;
+        }
+        function displayLogs(text) {
+	        var tab_logs = window.open('/logs', '_blank');
+            tab_logs.document.write('<pre>'+text+'</pre>');
+            tab_logs.document.close();
+	        return false;
+        }
+        function displayUI(url) {
+	        // window.open(url,'popUpWindow','height=300,width=400,left=10,top=10,resizable=yes,scrollbars=yes,toolbar=yes,menubar=no,location=no,directories=no,status=yes');
+	        var tab_url = window.open(url, '_blank');
+            tab_url.document.close();
+	        return false;
+        }
+    </script>
+  <script src="static/vendor/jquery/jquery.min.js"></script>
+  <script src="static/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Core plugin JavaScript-->
+  <script src="static/vendor/jquery-easing/jquery.easing.min.js"></script>
+
+
+</body>
+
+</html>
+
