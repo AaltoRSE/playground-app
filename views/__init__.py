@@ -14,6 +14,8 @@ def logged_in(f):
     @wraps(f)
     def decorated_func(*args, **kwargs):
         if 'username' in session:
+            if 'refresh' not in session:
+                session['refresh'] = []
             return f(*args, **kwargs)
         else:
             return render_login()
@@ -83,6 +85,10 @@ def dashboard():
     # setup page variables
     pipeline = pm.get_pipeline(user_name=user, pipeline_id=current_deployment_id)
     user_folder = os.path.join(user, current_deployment_id)
+    if pipeline.get_status() == "Not Ready" and len(session['refresh'])<1:
+        session['refresh']=[24,12,6,3,3]
+    if pipeline.get_status() == 'Ready':
+        session['refresh']=[]
     logger.info("rendering dashboard.html..")
     return render_template("dashboard.html", pipeline=pipeline, user_folder=user_folder, deployment_list=deployment_list)
 
