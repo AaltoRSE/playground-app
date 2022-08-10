@@ -205,7 +205,6 @@ def deploy_solution():
         logger.info(f"got solution and username: {username}")
         directory_solution_zip = decode_and_write_solution_zip(body['solution'], username)
         pipeline_id = pm.create_pipeline(username, directory_solution_zip)
-        session['refresh'] = [3,3,3]
         response = app.response_class(response=f'/dashboard?selected_deployment_id={pipeline_id}', status=200)
         return response
     except Exception as e:

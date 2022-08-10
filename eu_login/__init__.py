@@ -46,6 +46,8 @@ def login():
     else:  # Login successfully, redirect according `next` query parameter.
         session['username'] = hexlify(attributes['email'].lower().strip().encode()).decode('utf-8')
         session['userfirstname'] = attributes['firstName']
+        session['refresh'] = [3,3,3]
+
         return redirect(url_for("home"))
 
 
