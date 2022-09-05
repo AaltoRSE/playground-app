@@ -43,6 +43,7 @@ class PipelineManager:
         pipeline_ids = self.get_pipeline_ids(user_name)
         for pipeline_id in pipeline_ids:
             pipelines_user.append(self.get_pipeline(user_name, pipeline_id))
+        pipelines_user.sort(key=self._get_pipeline_id)
         return pipelines_user
 
     def get_pipeline_ids(self, user_name):
@@ -74,6 +75,9 @@ class PipelineManager:
         else:
             self.logger.error("User %s does not have pipeline %s", user_name, pipeline_id)
             return
+
+    def _get_pipeline_id(self, pipeline):
+        return pipeline.get_pipeline_name()
 
     def __create_path_user(self, user_name):
         directory = self.pathSolutions + user_name
