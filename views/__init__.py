@@ -44,11 +44,15 @@ def get_base_dir(user, deployment):
 def handle_error(e):
     code = 500
     # session.pop('current_deployment_id')
-    print(e)
-    x,pipeline_id = e.args
-    if(pipeline_id in pm.get_pipeline_ids(session['username'])):
-        _remove_pipeline(pipeline_id=pipeline_id)
-        return redirect('/')
+    print(f'handle_error(): {e}')
+    try:
+        x,pipeline_id = e.args
+        if(pipeline_id in pm.get_pipeline_ids(session['username'])):
+            _remove_pipeline(pipeline_id=pipeline_id)
+    except:
+        pass
+
+    return redirect('/')
 
 
 @app.route('/', methods=["GET"])
