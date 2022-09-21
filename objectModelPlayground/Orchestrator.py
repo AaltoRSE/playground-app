@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import yaml
 
 import objectModelPlayground.ObjectModelUtils as omUtils
 # logging.basicConfig(level=logging.INFO)
@@ -93,9 +94,13 @@ class Orchestrator:
         """Get dockerinfo.json."""
         return self._readfile(self.path_docker_info)
 
+    def get_protofiles_path(self):
+        return os.path.join(self.path_solution, 'microservice')
+
+
     def get_protofiles(self):
         """Get Proto Files in Microservice folder."""
-        msd = os.path.join(self.path_solution, 'microservice')
+        msd = self.get_protofiles_path
         protofiles_paths = [
             os.path.join(msd, protofile)
             for protofile in os.listdir(msd)
@@ -119,6 +124,22 @@ class Orchestrator:
         if len(yamls) < 4:
             logger.error(f"Only {len(yamls)} yaml files in solution.zip. Should be at least four!")
         return yamls
+
+    def get_shared_folder_path(self):
+        logger.info("get_shared_folder_path")
+        yaml_files = self.get_yamls()
+        logger.info(f"yaml_files = {yaml_files}")
+        for yaml_file in yaml_files:
+            with open(yaml_file, "r") as f:
+                data = yaml.load(f, Loader=yaml.FullLoader)
+            try:
+                environment_variables = data["spec"]["template"]["spec"]["containers"][0]["env"]
+                for environment_variable in environment_variables:
+                    if environment_variable["name"] == "SHARED_FOLDER_PATH":
+                        shared_folder_path = environment_variable["value"]
+                        return shared_folder_path
+            except:
+                pass
 
     def _readfile(self, path) -> str:
         if not omUtils.fileExists(path):

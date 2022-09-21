@@ -34,6 +34,12 @@ class NodeManager:
             return "unknownHostIP"
         return host_ip
 
+    def get_pods_names(self):
+        pods_names = []
+        for pod in self.__get_pods():
+            pods_names.append(self._get_pod_name(pod))
+        return pods_names
+
     def get_pods_information(self):
         logger.info("getPodsInformation ..")
         pods_information = []
