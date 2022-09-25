@@ -20,7 +20,9 @@ class Orchestrator:
         self.path_blueprint = path_solution + "/blueprint.json"
         self.deploymentsyamls = path_solution + "/deployments"
         self.path_solution_model_name = path_solution + "/modelname.txt"
-        
+        self.path_solution_icon = path_solution + "/solution_icon.png"
+        self.path_solution_description = path_solution + "/solution_description.png"
+
     def has_shared_folder(self):
         return "pvc.yaml" in os.listdir(self.deploymentsyamls)
 
@@ -154,3 +156,14 @@ class Orchestrator:
     def _is_yaml_file(self, file):
         return file.endswith(".yaml") or file.endswith("yml")
 
+    def get_solution_icon(self):
+        if not omUtils.fileExists(self.path_solution_icon):
+            logger.info(f"File {self.path_solution_icon} could not be found!")
+            return False
+        return self.path_solution_icon
+
+    def get_solution_description(self):
+        if not omUtils.fileExists(self.path_solution_description):
+            logger.info(f"File {self.path_solution_description} could not be found!")
+            return False
+        return self.path_solution_description

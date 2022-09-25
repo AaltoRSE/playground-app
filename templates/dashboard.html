@@ -71,17 +71,17 @@
             <div class="container-fluid">
             <div class="card-body">
               <!-- Page Heading -->
+                {% if pipeline.get_status() == 'Not Ready'%}
+                  <button type="button" class="btn btn-labeled btn-danger"><span class="btn-label"><i class="fas fa-cog"></i></span>Status: {{"Not Ready"}}</button>
+                {% else %}
+                  <button type="button" class="btn btn-labeled btn-success"><span class="btn-label"><i class="fas fa-cog"></i></span>Status: {{pipeline.get_status()}}</button>
+                {% endif %}
                 {% if pipeline.is_pipeline() %}
                   <a href="/run"><button type="button" class="btn btn-labeled btn-success"><span class="btn-label"><i class="fas fa-play-circle"></i></span>Run</button></a>
                 {% endif %}
                 <a href="/reset"><button type="button" class="btn btn-labeled btn-warning"><span class="btn-label"><i class="fas fa-sync"></i></span>Reset</button></a>
                 <a href="/delete"><button type="button" class="btn btn-labeled btn-danger"><span class="btn-label"><i class="fas fa-minus-circle"></i></span>Delete</button></a>
                 <a href="/logs" target="_blank"><button type="button" class="btn btn-labeled btn-info"><span class="btn-label"><i class="fas fa-sign-out-alt"></i></span>Logs</button></a>
-                {% if pipeline.get_status() == 'Not Ready'%}
-                  <button type="button" class="btn btn-labeled btn-danger"><span class="btn-label"><i class="fas fa-cog"></i></span>Status: {{"Not Ready"}}</button>
-                {% else %}
-                  <button type="button" class="btn btn-labeled btn-success"><span class="btn-label"><i class="fas fa-cog"></i></span>Status: {{pipeline.get_status()}}</button>
-                {% endif %}
                 <table id='result' align="center">
                   <thead>
                     <tr>
@@ -163,6 +163,10 @@
                   {% endif %}
                   </tbody>
                 </table>
+
+                <p> {{ pipeline.get_orchestrator().get_solution_icon() }} </p>
+                <p> {{ pipeline.get_orchestrator().get_solution_description() }} </p>
+
             </div>
           </div>
           </div>
