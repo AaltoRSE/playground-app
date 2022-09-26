@@ -21,7 +21,7 @@ class Orchestrator:
         self.deploymentsyamls = path_solution + "/deployments"
         self.path_solution_model_name = path_solution + "/modelname.txt"
         self.path_solution_icon = path_solution + "/solution_icon.png"
-        self.path_solution_description = path_solution + "/solution_description.png"
+        self.path_solution_description = path_solution + "/solution_description.html"
 
     def has_shared_folder(self):
         return "pvc.yaml" in os.listdir(self.deploymentsyamls)
