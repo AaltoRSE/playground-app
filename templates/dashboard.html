@@ -72,10 +72,14 @@
             <div class="card-body">
               <!-- Page Heading -->
                 {% if pipeline.get_status() == 'Not Ready'%}
-                  <button type="button" class="btn btn-labeled btn-danger"><span class="btn-label"><i class="fas fa-cog"></i></span>Status: {{"Not Ready"}}</button>
-                {% else %}
+                  <button type="button" class="btn btn-labeled btn-danger"><span class="btn-label"><i class="fas fa-cog"></i></span>Status: {{pipeline.get_status()}}</button>
+                {% elif pipeline.get_status() == 'Running'%}
                   <button type="button" class="btn btn-labeled btn-success"><span class="btn-label"><i class="fas fa-cog"></i></span>Status: {{pipeline.get_status()}}</button>
+                {% else %}
+                  <button type="button" class="btn btn-labeled btn-primary"><span class="btn-label"><i class="fas fa-cog"></i></span>Status: {{pipeline.get_status()}}</button>
                 {% endif %}
+                <!-- vertical separator -->
+                <span style="border-left: solid 2px black; padding-top: 6px; padding-bottom: 10px; margin-left: 5px"> </span>
                 {% if pipeline.is_pipeline() %}
                   <a href="/run"><button type="button" class="btn btn-labeled btn-success"><span class="btn-label"><i class="fas fa-play-circle"></i></span>Run</button></a>
                 {% endif %}
