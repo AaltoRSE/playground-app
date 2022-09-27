@@ -102,7 +102,7 @@ class Orchestrator:
 
     def get_protofiles(self):
         """Get Proto Files in Microservice folder."""
-        msd = self.get_protofiles_path
+        msd = self.get_protofiles_path()
         protofiles_paths = [
             os.path.join(msd, protofile)
             for protofile in os.listdir(msd)
