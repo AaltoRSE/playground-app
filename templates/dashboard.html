@@ -167,17 +167,6 @@
                   {% endif %}
                   </tbody>
                 </table>
-                <p/>
-
-                {% if pipeline.get_orchestrator().get_solution_icon() %}
-                    <img src="{{ pipeline.get_orchestrator().get_solution_icon() }}" />
-                {% endif %}
-
-                {% pipeline.get_orchestrator().get_solution_description() %}
-                    <div>
-                        {% include pipeline.get_orchestrator().get_solution_description() %}
-                    </div>
-                {% endif %}
 
             </div>
           </div>
