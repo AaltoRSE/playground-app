@@ -71,7 +71,7 @@ class NodeManager:
             container_name1 = self._get_container_names(pod)[0]
             host_ip = self._get_host_ip(pod)
             is_ready_container = self.__is_ready(pod)
-            status_details = self._get_status_details(pod, is_ready_container)
+            status_details = self._get_status_details(pod)
             return {"Nodename": container_name1, "hostIP": host_ip,
                     "Logs": logs, "Status": is_ready_container,
                     "Status-details": status_details}
@@ -124,8 +124,7 @@ class NodeManager:
     def _get_host_ip(self, pod):
         return pod.status.host_ip
 
-    def _get_status_details(self, pod, is_ready_container):
-        # if is_ready_container:
+    def _get_status_details(self, pod):
         pod_name = self._get_pod_name(pod)
         process = subprocess.run(
             ["kubectl", "-n", self.namespace, "get", "pod", pod_name],
@@ -138,13 +137,7 @@ class NodeManager:
         result += "Extensive Status: \n\n"
         result += str(pod.status.container_statuses)
         return result
-        # return process.stdout
-        # else:
-            # return pod.status.container_statuses
     
-    # def _getPodMetadataNamespace(self, pod):
-    #     return self._getPodMetadata().namespace
-
     def _get_pod_metadata(self, pod):
         return pod.metadata
 
