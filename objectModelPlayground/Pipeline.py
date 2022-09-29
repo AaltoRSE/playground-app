@@ -211,6 +211,7 @@ class Pipeline:
             self.__create_namespace()
             self.logger.info("__runKubernetesClientScript()..")
             run_kubernetes_client(namespace=self.__get_namespace(), basepath=self.__get_path_solution_user_pipeline())
+            self.__wait_until_ready()
             self._send_protos_to_jupyter()
 
             self.logger.info("__runKubernetesClientScript() done!")
