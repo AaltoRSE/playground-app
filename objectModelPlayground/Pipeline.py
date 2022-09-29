@@ -234,7 +234,13 @@ class Pipeline:
         pod_name_jupyter = self._get_pod_name_jupyter()
         if pod_name_jupyter is None:
             return
-        destination = pod_name_jupyter + ":" + "/home/jovyan/tmp" # ToDo!!!  + self.get_orchestrator().get_shared_folder_path() + "/microservice/"
+        try:
+            shared_folder = self.get_orchestrator().get_shared_folder_path()
+            logging.info("shared_folder = " + shared_folder)
+            
+            destination = pod_name_jupyter + ":" + shared_folder + "/microservice/"
+        except:
+            destination = pod_name_jupyter + ":/home/joyan/microservice"
         logging.info(f"destination = {destination}")
         cmd = f"kubectl -n {self.__namespace} cp {protofiles_path} {destination}"
         self._runcmd(cmd)
