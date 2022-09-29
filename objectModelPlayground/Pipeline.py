@@ -197,53 +197,6 @@ class Pipeline:
         process = subprocess.run(args, check=True, capture_output=True, text=True)
         return process.stdout
 
-    def _get_pod_name_jupyter(self):
-        #ToDo
-        JUPYTER_IMAGE = "registry.gitlab.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-lab:custom-jupyter"
-        image_names = []
-        container_names = []
-        yaml_files = self.get_orchestrator().get_yamls()
-        for yaml_file in yaml_files:
-            with open(yaml_file, "r") as f:
-                data = yaml.load(f, Loader=yaml.FullLoader)
-            try:
-                containers = data["spec"]["template"]["spec"]["containers"]
-                for container in containers:
-                    container_name = container["name"]
-                    image_name = container["image"]
-                    container_names.append(container_name)
-                    image_names.append(image_name)
-            except:
-                pass
-        
-        container_name_short = None
-        for image_name, container_name in zip(image_names, container_names):
-            if JUPYTER_IMAGE in image_name:
-                container_name_short = container_name
-                break
-        if container_name_short is None:
-            return None
-        pods_names = self._get_node_manager().get_pods_names()
-        for pod_name in pods_names:
-            self.logger.info(f"name = {pod_name}")
-            if container_name_short in pod_name:
-                self.logger.info(f"pod_name = {pod_name} \n\n\n")
-                return pod_name
-        self.logger.error("error in Pipeline._get_pod_name_jupyter()!!")
-        return None
-    def _send_protos_to_jupyter(self):
-        logging.info("Pipeline._send_proto_to_jupyter() ..")
-        
-        protofiles_path = self.get_orchestrator().get_protofiles_path()+"/"
-        logging.info(f"protofiles_path = {protofiles_path}")
-        pod_name_jupyter = self._get_pod_name_jupyter()
-        if pod_name_jupyter is None:
-            return
-        destination = pod_name_jupyter  + ":" + "/home/jovyan/tmp" # ToDo!!!  + self.get_orchestrator().get_shared_folder_path() + "/microservice/"
-        logging.info(f"destination = {destination}")
-        cmd = f"kubectl -n {self.__namespace} cp {protofiles_path} {destination}"
-        self._runcmd(cmd)
-
     #not Threadsafe
     def _create_pipeline(self):
         try:
@@ -272,6 +225,59 @@ class Pipeline:
         self.__run_and_log(cmd, "__rolloutRestartDeployments()")
         self.__wait_until_ready(timeout_seconds=10)
         self._send_protos_to_jupyter()
+
+    def _send_protos_to_jupyter(self):
+        logging.info("Pipeline._send_proto_to_jupyter() ..")
+        
+        protofiles_path = self.get_orchestrator().get_protofiles_path()+"/"
+        logging.info(f"protofiles_path = {protofiles_path}")
+        pod_name_jupyter = self._get_pod_name_jupyter()
+        if pod_name_jupyter is None:
+            return
+        destination = pod_name_jupyter + ":" + "/home/jovyan/tmp" # ToDo!!!  + self.get_orchestrator().get_shared_folder_path() + "/microservice/"
+        logging.info(f"destination = {destination}")
+        cmd = f"kubectl -n {self.__namespace} cp {protofiles_path} {destination}"
+        self._runcmd(cmd)
+
+    def _get_pod_name_jupyter(self):
+        #ToDo Define final image name.
+        JUPYTER_IMAGE = "registry.gitlab.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-lab:custom-jupyter"
+
+        image_names, container_names_yaml = self.__get_image_container_names()
+
+        container_name = None
+        for image_name, container_name_yaml in zip(image_names, container_names_yaml):
+            if JUPYTER_IMAGE in image_name:
+                container_name = container_name_yaml
+                break
+        if container_name is None:
+            return None
+        pod_names = self._get_node_manager().get_pods_names()
+        for pod_name in pod_names:
+            self.logger.info(f"name = {pod_name}")
+            if container_name in pod_name:
+                self.logger.info(f"pod_name = {pod_name} \n\n\n")
+                return pod_name
+        self.logger.error("error in Pipeline._get_pod_name_jupyter()!!")
+        return None
+
+    def __get_image_container_names(self):
+        image_names = []
+        container_names = []
+        yaml_files = self.get_orchestrator().get_yamls()
+        for yaml_file in yaml_files:
+            with open(yaml_file, "r") as f:
+                data = yaml.load(f, Loader=yaml.FullLoader)
+            try:
+                containers = data["spec"]["template"]["spec"]["containers"]
+                for container in containers:
+                    container_name = container["name"]
+                    image_name = container["image"]
+                    container_names.append(container_name)
+                    image_names.append(image_name)
+            except:
+                pass
+        return image_names, container_names
 
     def _init_run(self):
         path_solution = self.__get_path_solution_user_pipeline()
