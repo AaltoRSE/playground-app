@@ -211,7 +211,6 @@ class Pipeline:
             self.__create_namespace()
             self.logger.info("__runKubernetesClientScript()..")
             run_kubernetes_client(namespace=self.__get_namespace(), basepath=self.__get_path_solution_user_pipeline())
-            self.__wait_until_ready()
             self._send_protos_to_jupyter()
 
             self.logger.info("__runKubernetesClientScript() done!")
@@ -228,6 +227,7 @@ class Pipeline:
         self._send_protos_to_jupyter()
 
     def _send_protos_to_jupyter(self):
+        self.__wait_until_ready()
         logging.info("Pipeline._send_proto_to_jupyter() ..")
         
         protofiles_path = self.get_orchestrator().get_protofiles_path()+"/"
