@@ -395,7 +395,7 @@ class Pipeline:
     def __get_namespace(self):
         return self.__namespace
 
-    def __wait_until_ready(self, timeout_seconds):
+    def __wait_until_ready(self, timeout_seconds=60):
         self._get_node_manager().wait_until_ready(timeout_seconds)
 
 
