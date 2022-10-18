@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # ===================================================================================
 # Copyright (C) 2019 Fraunhofer Gesellschaft. All rights reserved.
 # ===================================================================================
@@ -13,6 +14,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============LICENSE_END==========================================================
-#!/usr/bin/env python3
 import os, sys, binascii
 [print(binascii.unhexlify(d)) for d in os.listdir(sys.argv[1])]
