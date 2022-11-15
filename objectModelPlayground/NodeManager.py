@@ -40,6 +40,21 @@ class NodeManager:
             pods_names.append(self._get_pod_name(pod))
         return pods_names
 
+
+    def get_logs(self, container_name):
+        self.wait_until_ready()
+        for pod in self.__get_pods():
+            container_name1_kubectl = self._get_pod_name(pod)
+            logger.info(f"container_name1_kubectl = {container_name1_kubectl}")
+            if(self._is_terminating(pod)):
+                continue
+            logger.info(f"container Name = {container_name1_kubectl}")
+            if(container_name1_kubectl == container_name):
+                logs = self._get_logs(pod)
+                logger.info(logs)
+                return logs
+                
+
     def get_pods_information(self):
         logger.info("getPodsInformation ..")
         pods_information = []
@@ -164,9 +179,12 @@ class NodeManager:
             logger.error("pod.metadata.namespace = " + pod.metadata.namespace)
 
     def _is_terminating(self, pod):
-        name = self._get_pod_name(pod)
+        pod_name = self._get_pod_name(pod)
+        return self.is_terminating(pod_name=pod_name)
+
+    def is_terminating(self, pod_name):
         process = subprocess.run(
-            ["kubectl", "-n", self.namespace, "get", "pod", name],
+            ["kubectl", "-n", self.namespace, "get", "pod", pod_name],
             check=True, stdout=subprocess.PIPE, universal_newlines=True)
         out = process.stdout
 

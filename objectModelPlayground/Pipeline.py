@@ -156,6 +156,8 @@ class Pipeline:
                     pod["Web-UI"] = None
                 else:
                     pod["Web-UI"] = f"{pod.pop('hostIP')}:{port_web_ui}"
+                    if(pod["Nodename"] in self._get_pod_name_jupyter()):
+                        pod["Web-UI"] = pod["Web-UI"] + "/lab?token=" + self._get_token_jupyter()
                     self.logger.info(f"WebUI for pod: {pod['Nodename']} is:")
                     self.logger.info(pod["Web-UI"])
             except Exception as e:
@@ -248,6 +250,33 @@ class Pipeline:
         cmd = f"kubectl -n {self.__namespace} cp {protofiles_path} {destination}"
         self._runcmd(cmd)
 
+    def _get_token_jupyter(self):
+        logging.info("_get_token_jupyter()")
+        self.__wait_until_ready()
+        pod_name_jupyter = self._get_pod_name_jupyter()
+        logging.info("_get_token_jupyter(). Pod_name = ")
+        self.logger.info(f"pod_name = {pod_name_jupyter} \n\n\n")
+
+        if pod_name_jupyter is None:
+            return
+        try:
+            logging.info("_get_token_jupyter(). Get Logs.. ")
+            logs = self._get_node_manager().get_logs(pod_name_jupyter)
+            logging.info("_get_token_jupyter(). Get Logs done. Logs = ")
+            logging.info(logs)
+            logging.info("_get_token_jupyter() done!")
+
+            logs = logs.split("\n")
+            token_search_string = "ServerApp]  or http://127.0.0.1:8062/lab?token="
+            for log in logs:
+                if(token_search_string in log):
+                    token = log.split(token_search_string)[1]
+            print(token)
+
+            return token
+        except:
+            return ""
+
     def _get_pod_name_jupyter(self):
         #ToDo Define final image name.
         JUPYTER_IMAGE = "registry.gitlab.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-lab:custom-jupyter"
@@ -265,6 +294,8 @@ class Pipeline:
         for pod_name in pod_names:
             self.logger.info(f"name = {pod_name}")
             if container_name in pod_name:
+                if(self._get_node_manager().is_terminating(pod_name)):
+                    continue
                 self.logger.info(f"pod_name = {pod_name} \n\n\n")
                 return pod_name
         self.logger.error("error in Pipeline._get_pod_name_jupyter()!!")
@@ -398,7 +429,7 @@ class Pipeline:
     def __get_namespace(self):
         return self.__namespace
 
-    def __wait_until_ready(self, timeout_seconds=60):
+    def __wait_until_ready(self, timeout_seconds=120):
         self._get_node_manager().wait_until_ready(timeout_seconds)
 
 
