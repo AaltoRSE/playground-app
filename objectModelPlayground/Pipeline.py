@@ -162,6 +162,7 @@ class Pipeline:
                 print(e)
                 self.logger.info(f"No WebUI available for pod: {pod['Nodename']}")
                 pod["Web-UI"] = None
+        return pods_information
 
     def _get_web_ui_port(self, orchestrator, pod):
         container_name = pod["Nodename"]
