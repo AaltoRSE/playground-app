@@ -80,8 +80,7 @@ class Pipeline:
     def get_pods_information(self):
         nodeManager = self._get_node_manager()
         podsInformation = nodeManager.get_pods_information()
-        orchestrator = self.get_orchestrator()
-        self._update_pods_information(podsInformation, orchestrator)
+        podsInformation = self._update_pods_information(podsInformation)
 
         return podsInformation
         
@@ -147,7 +146,9 @@ class Pipeline:
     def _get_node_manager(self):
         return NodeManager(self.__get_namespace())
 
-    def _update_pods_information(self, pods_information, orchestrator):
+    def _update_pods_information(self, pods_information):
+        orchestrator = self.get_orchestrator()
+
         for pod in pods_information:
             try:
                 port_web_ui = self._get_web_ui_port(orchestrator=orchestrator, pod=pod)
