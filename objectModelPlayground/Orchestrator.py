@@ -134,13 +134,16 @@ class Orchestrator:
         return len(yamls) <= 4
 
     def get_yamls(self):
-        path_yamls = self.path_solution + "/deployments/"
+        path_yamls = self.get_yamls_path()
         files = os.listdir(path_yamls)
         files_yaml = [file for file in files if self._is_yaml_file(file)]
         yamls = [path_yamls + file for file in files_yaml]
         if len(yamls) < 4:
             logger.error(f"Only {len(yamls)} yaml files in solution.zip. Should be at least four!")
         return yamls
+
+    def get_yamls_path(self):
+        return self.path_solution + "/deployments/"
 
     def get_shared_folder_path(self):
         logger.info("get_shared_folder_path")
