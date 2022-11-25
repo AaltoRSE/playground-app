@@ -273,7 +273,7 @@ class Pipeline:
         
         yamls_path = self.get_orchestrator().get_yamls_path()+"/"
         logging.info(f"yamls_path = {yamls_path}")
-        self._send_to_jupyter(source=yamls_path, destination="deployments")
+        self._send_to_jupyter(source=yamls_path, destination="jupyter_connect_tools/deployments")
 
     def _send_protos_to_jupyter(self):
         self.__wait_until_ready()
@@ -281,7 +281,7 @@ class Pipeline:
         
         protofiles_path = self.get_orchestrator().get_protofiles_path()+"/"
         logging.info(f"protofiles_path = {protofiles_path}")
-        self._send_to_jupyter(source=protofiles_path, destination="microservice")
+        self._send_to_jupyter(source=protofiles_path, destination="jupyter_connect_tools/microservice")
 
     def _get_token_jupyter(self):
         logging.info("_get_token_jupyter()")
