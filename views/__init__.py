@@ -159,7 +159,7 @@ def dir_listing():
     print(f"BASE_DIR = {BASE_DIR}")
 
     if not req_path == '':
-        req_path = str(req_path).split('/')[1]
+        req_path = req_path.lstrip("/")
     abs_path = os.path.join(BASE_DIR, req_path)
 
     if not os.path.exists(abs_path):
@@ -170,7 +170,7 @@ def dir_listing():
         return send_file(abs_path)
 
         # Show directory contents
-    files = os.listdir(abs_path)
+    files = [os.path.join(req_path,file) for file in os.listdir(abs_path)]
     return render_template('files.html', files=files)
 
 

@@ -4,7 +4,7 @@
     {% for file in files %}
     <li>
         <a href="/shared_folder?path={{ user_folder }}/{{ file }}" target="_blank">
-            {{ file }}
+            {{ file.split('/')[-1] }}
         </a>
     </li>
     {% endfor %}
