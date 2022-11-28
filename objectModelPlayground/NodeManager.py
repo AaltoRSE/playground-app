@@ -66,7 +66,6 @@ class NodeManager:
             logger.info(f"container Name = {container_name1_kubectl}")
             if(container_name1_kubectl == container_name):
                 logs = self._get_logs(pod)
-                logger.info(logs)
                 return logs
                 
 

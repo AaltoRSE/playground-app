@@ -287,24 +287,18 @@ class Pipeline:
         logging.info("_get_token_jupyter()")
         self.__wait_until_ready()
         pod_name_jupyter = self._get_pod_name_jupyter()
-        logging.info("_get_token_jupyter(). Pod_name = ")
-        self.logger.info(f"pod_name = {pod_name_jupyter} \n\n\n")
 
         if pod_name_jupyter is None:
             return
         try:
             logging.info("_get_token_jupyter(). Get Logs.. ")
             logs = self._get_node_manager().get_logs(pod_name_jupyter)
-            logging.info("_get_token_jupyter(). Get Logs done. Logs = ")
-            logging.info(logs)
-            logging.info("_get_token_jupyter() done!")
 
             logs = logs.split("\n")
             token_search_string = "ServerApp]  or http://127.0.0.1:8062/lab?token="
             for log in logs:
                 if(token_search_string in log):
                     token = log.split(token_search_string)[1]
-            print(token)
 
             return token
         except:
