@@ -171,7 +171,7 @@ class Pipeline:
                     pod["Web-UI"] = None
                 else:
                     pod["Web-UI"] = f"{pod.pop('hostIP')}:{port_web_ui}"
-                    if(pod["Nodename"] in self._get_pod_name_jupyter()):
+                    if(self._is_jupyter(pod["Nodename"])):
                         pod["Web-UI"] = pod["Web-UI"] + "/lab?token=" + self._get_token_jupyter()
                     self.logger.info(f"WebUI for pod: {pod['Nodename']} is:")
                     self.logger.info(pod["Web-UI"])
@@ -303,6 +303,12 @@ class Pipeline:
             return token
         except:
             return ""
+
+    def _is_jupyter(self, node_name):
+        pod_name_jupyter = self._get_pod_name_jupyter()
+        if pod_name_jupyter is None:
+            return False
+        return node_name in pod_name_jupyter
 
     def _get_pod_name_jupyter(self):
         #ToDo Define final image name.
