@@ -312,14 +312,17 @@ class Pipeline:
 
     def _get_pod_name_jupyter(self):
         #ToDo Define final image name.
-        JUPYTER_IMAGE = "registry.gitlab.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-lab:custom-jupyter"
+        self.logger.info("_get_pod_name_jupyter()")
+        JUPYTER_IMAGES = ["registry.gitlab.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-lab:custom-jupyter", \
+                          "hub.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-lab", "hub.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-lab:latest"]
 
         image_names, container_names_yaml = self.__get_image_container_names()
 
         container_name = None
         for image_name, container_name_yaml in zip(image_names, container_names_yaml):
-            if JUPYTER_IMAGE in image_name:
+            if image_name in JUPYTER_IMAGES:
                 container_name = container_name_yaml
+                self.logger.info(f"Jupyter Image = {image_name}")
                 break
         if container_name is None:
             return None
