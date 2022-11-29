@@ -182,18 +182,24 @@ class Pipeline:
         return pods_information
 
     def _get_web_ui_port(self, orchestrator, pod):
+        self.logger.info("orchestrator._get_web_ui_port()..")
         container_name = pod["Nodename"]
-        self.logger.info("orchestrator.get_container_port()")
-        port_container = orchestrator.get_container_port(container_name)
-        if port_container is None:
-            raise Exception("portContainer == None")
+        container_name_web_ui = container_name+"webui"
 
-        self.logger.info("orchestrator.get_container_port() done")
-        self.logger.info(f"portContainer = {port_container}")
+        cmd = f"kubectl -n {self.__namespace} get svc"
+        out = self._runcmd(cmd)     
+        lines = out.split("\n")
+        for line in lines:
+            if container_name_web_ui in line:
+                index_tcp = line.rfind("TCP")
+                webui_port = int(line[index_tcp-6:index_tcp-1])
+        if webui_port is None:
+            raise Exception("webui_port == None")
 
-        print("pod['hostIP']: ", pod["hostIP"])
+
+
+
         host_ip = pod["hostIP"]
-        webui_port = port_container+1
         test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         test_socket.connect((host_ip, webui_port))
         # connection successful
