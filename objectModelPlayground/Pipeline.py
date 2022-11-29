@@ -251,47 +251,47 @@ class Pipeline:
 
     def _send_to_jupyter(self, source, destination):
         self.__wait_until_ready()
-        logging.info("Pipeline._send_files_to_jupyter() ..")
+        self.logger.info("Pipeline._send_files_to_jupyter() ..")
 
         pod_name_jupyter = self._get_pod_name_jupyter()
         if pod_name_jupyter is None:
             return
         try:
             shared_folder = self.get_orchestrator().get_shared_folder_path()
-            logging.info("shared_folder = " + shared_folder)
+            self.logger.info("shared_folder = " + shared_folder)
             
             destination_full = pod_name_jupyter + ":" + shared_folder + f"/{destination}/"
         except:
             destination_full = pod_name_jupyter + f":/home/joyan/{destination}/"
-        logging.info(f"destination = {destination_full}")
+        self.logger.info(f"destination = {destination_full}")
         cmd = f"kubectl -n {self.__namespace} cp {source} {destination_full}"
         self._runcmd(cmd)
 
     def _send_deployment_to_jupyter(self):
         self.__wait_until_ready()
-        logging.info("Pipeline._send_deployment_to_jupyter() ..")
+        self.logger.info("Pipeline._send_deployment_to_jupyter() ..")
         
         yamls_path = self.get_orchestrator().get_yamls_path()+"/"
-        logging.info(f"yamls_path = {yamls_path}")
+        self.logger.info(f"yamls_path = {yamls_path}")
         self._send_to_jupyter(source=yamls_path, destination="jupyter_connect_tools/deployments")
 
     def _send_protos_to_jupyter(self):
         self.__wait_until_ready()
-        logging.info("Pipeline._send_proto_to_jupyter() ..")
+        self.logger.info("Pipeline._send_proto_to_jupyter() ..")
         
         protofiles_path = self.get_orchestrator().get_protofiles_path()+"/"
-        logging.info(f"protofiles_path = {protofiles_path}")
+        self.logger.info(f"protofiles_path = {protofiles_path}")
         self._send_to_jupyter(source=protofiles_path, destination="jupyter_connect_tools/microservice")
 
     def _get_token_jupyter(self):
-        logging.info("_get_token_jupyter()")
+        self.logger.info("_get_token_jupyter()")
         self.__wait_until_ready()
         pod_name_jupyter = self._get_pod_name_jupyter()
 
         if pod_name_jupyter is None:
             return
         try:
-            logging.info("_get_token_jupyter(). Get Logs.. ")
+            self.logger.info("_get_token_jupyter(). Get Logs.. ")
             logs = self._get_node_manager().get_logs(pod_name_jupyter)
 
             logs = logs.split("\n")
