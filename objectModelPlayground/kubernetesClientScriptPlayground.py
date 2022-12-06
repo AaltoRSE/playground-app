@@ -21,7 +21,6 @@ import json
 import subprocess
 import argparse
 import logging
-from objectModelPlayground.Orchestrator import Orchestrator
 
 
 class DockerInfo:
@@ -33,8 +32,6 @@ class DockerInfo:
         if not os.path.exists(dockerinfo):
             logging.error("dockerinfo does not exist!..")
             return
-        orchestrator = Orchestrator(basepath)
-        is_single_deployment = orchestrator.is_deployment_single_model()
 
         print("Start updating the docker info Json : ")
         with open(dockerinfo, "r") as jsonFile:
@@ -42,9 +39,7 @@ class DockerInfo:
         print(f"Updating node_ports of file: {dockerinfo}, ports_mapping: {ports_mapping}")
         for x in range(len(data["docker_info_list"])):
             container_name = (data["docker_info_list"][x]["container_name"]).lower()
-            if is_single_deployment and container_name == "orchestrator":
-                del data["docker_info_list"][x]
-                continue
+
 
             if(not container_name in ports_mapping.keys()):
                 logging.error(f"container_name {container_name} not found in the port mappings. Unsuccessful starting of pods?")
@@ -271,10 +266,6 @@ def run_kubernetes_client(namespace, basepath):
     deployment_dir = basepath + "/deployments"
     deployment = Deployment(path_dir=deployment_dir)
     output = deployment.get_namespaces()
-    orchestrator = Orchestrator(path_solution=basepath)
-    is_deployment_single_model = orchestrator.is_deployment_single_model()
-    if is_deployment_single_model:
-        logging.info("Single model will be deployed, therefore no orchestrator is needed.")
 
     if deployment.is_valid_namespace(namespace, output):
         if os.path.isdir(deployment.path_dir):
@@ -284,14 +275,10 @@ def run_kubernetes_client(namespace, basepath):
             for file in files:
                 if file.endswith('webui.yaml'):
                     continue
-                if is_deployment_single_model:
-                    if file.endswith('orchestrator_deployment.yaml') or file.endswith('orchestrator_service.yaml'):
-                        continue
                 if deployment.is_service(file):
                     node_port = deployment.get_next_free_port()
                     node_port_web_ui = deployment.get_next_free_port()
-                    if not is_deployment_single_model:
-                        names.append(deployment.web_ui_service(file, namespace, node_port_web_ui))
+                    names.append(deployment.web_ui_service(file, namespace, node_port_web_ui))
                 names.append(deployment.apply_deployment_services(file, node_port, namespace))
             # deployment.delete_deployment_services(names)
             print(deployment.port_mapping)
@@ -303,11 +290,10 @@ def run_kubernetes_client(namespace, basepath):
 
         if deployment.is_orchestrator_present("orchestrator_client.py", basepath):
             print("Node IP-address : " + deployment.get_node_ip_address(namespace))
-            if(not is_deployment_single_model):
-                print("Orchestrator Port is : " + str(deployment.port_mapping.get('orchestrator')))
-                print("Please run python orchestrator_client/orchestrator_client.py --endpoint=%s:%d --basepath=./" % (deployment.get_node_ip_address(namespace), deployment.port_mapping.get('orchestrator')))
+            print("Orchestrator Port is : " + str(deployment.port_mapping.get('orchestrator')))
+            print("Please run python orchestrator_client/orchestrator_client.py --endpoint=%s:%d --basepath=./" % (deployment.get_node_ip_address(namespace), deployment.port_mapping.get('orchestrator')))
         else:
-            print("Thank you")
+            print("No orchestrator in solution provided.")
     else:
         print("Existing namespaces are")
         print(output)
