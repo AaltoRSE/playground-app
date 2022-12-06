@@ -129,19 +129,15 @@ class Orchestrator:
         }
         return protofiles
 
-    def is_deployment_single_model(self):
-        yamls = self.get_yamls()
-        return len(yamls) <= 4
-
     def get_yamls(self):
         path_yamls = self.get_yamls_path()
         files = os.listdir(path_yamls)
         files_yaml = [file for file in files if self._is_yaml_file(file)]
-        yamls = [path_yamls + file for file in files_yaml]
+        yamls = [os.path.join(path_yamls,file) for file in files_yaml]
         return yamls
 
     def get_yamls_path(self):
-        return self.path_solution + "/deployments/"
+        return os.path.join(self.path_solution,"deployments")
 
     def get_shared_folder_path(self):
         logger.info("get_shared_folder_path")
