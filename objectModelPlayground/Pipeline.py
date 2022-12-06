@@ -186,7 +186,7 @@ class Pipeline:
         container_name = pod["Nodename"]
         container_name_web_ui = container_name+"webui"
 
-        cmd = f"kubectl -n {self.__namespace} get svc"
+        cmd = f"kubectl -n {self.__get_namespace()} get svc"
         out = self._runcmd(cmd)     
         lines = out.split("\n")
         for line in lines:
@@ -206,7 +206,7 @@ class Pipeline:
         return str(webui_port)
 
     def _get_pvc(self):
-        cmd = f"kubectl -n {self.__namespace} get pvc"
+        cmd = f"kubectl -n {self.__get_namespace()} get pvc"
         out = self._runcmd(cmd)     
         if "No resources found" in out:
             return False
@@ -246,7 +246,7 @@ class Pipeline:
 
     def __rollout_restart_deployments(self):
         self.logger.info("__rolloutRestartDeployments()..")
-        cmd = f"kubectl -n {self.__namespace} rollout restart deployment"
+        cmd = f"kubectl -n {self.__get_namespace()} rollout restart deployment"
         self.__run_and_log(cmd, "__rolloutRestartDeployments()")
         self.__wait_until_ready(timeout_seconds=10)
 
@@ -270,7 +270,7 @@ class Pipeline:
         except:
             destination_full = pod_name_jupyter + f":/home/joyan/{destination}/"
         self.logger.info(f"destination = {destination_full}")
-        cmd = f"kubectl -n {self.__namespace} cp {source} {destination_full}"
+        cmd = f"kubectl -n {self.__get_namespace()} cp {source} {destination_full}"
         self._runcmd(cmd)
 
     def _send_deployment_to_jupyter(self):
@@ -373,7 +373,7 @@ class Pipeline:
     # def __rolloutRestartDeployment(self, deployment_name):
     #     self.logger.info("__rolloutDeployment() ..")
     #     subprocess.run(
-    #         ["kubectl", "-n", self.__namespace, "rollout", "restart", "deployment", deployment_name],
+    #         ["kubectl", "-n", self.__get_namespace(), "rollout", "restart", "deployment", deployment_name],
     #         check=True)
 
     def __has_shared_folder(self):
