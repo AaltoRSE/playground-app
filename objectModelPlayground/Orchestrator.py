@@ -129,6 +129,9 @@ class Orchestrator:
         }
         return protofiles
 
+    def is_deployment_single_model(self):
+        return not os.path.exists(os.path.join(self.path_solution,"orchestrator_client"))
+        
     def get_yamls(self):
         path_yamls = self.get_yamls_path()
         files = os.listdir(path_yamls)
