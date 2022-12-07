@@ -320,6 +320,8 @@ class Pipeline:
         #ToDo Define final image name.
         self.logger.info("_get_pod_name_jupyter()")
         JUPYTER_IMAGES = ["registry.gitlab.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-connect:latest", \
+                          "registry.gitlab.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-lab:custom-jupyter", \
+                          "hub.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-lab", "hub.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-lab:latest", \
                           "hub.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-connect", "hub.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-connect:latest"]
 
         image_names, container_names_yaml = self.__get_image_container_names()
