@@ -26,7 +26,6 @@ from datetime import datetime
 
 from objectModelPlayground.NodeManager import NodeManager
 from objectModelPlayground.Orchestrator import Orchestrator
-from objectModelPlayground.kubernetesClientScriptPlayground import run_kubernetes_client
 import objectModelPlayground.OrchestratorClient as OrchestratorClient
 import objectModelPlayground.ObjectModelUtils as omUtils
 import objectModelPlayground.status_client as status_client
@@ -235,7 +234,7 @@ class Pipeline:
             self.__pull_images()
             self.__create_namespace()
             self.logger.info("__runKubernetesClientScript()..")
-            run_kubernetes_client(namespace=self.__get_namespace(), basepath=self.__get_path_solution_user_pipeline())
+            self.__runKubernetesClientScript()
             self._prepare_jupyter()
 
             self.logger.info("__runKubernetesClientScript() done!")
@@ -380,6 +379,23 @@ class Pipeline:
 
     def __has_shared_folder(self):
         return self.get_orchestrator().has_shared_folder()
+
+    def __runKubernetesClientScript(self):
+        namespace = self.__get_namespace()
+
+        base_path = self.__get_path_solution_user_pipeline()
+        path_kubernetes_client_script = os.path.join(base_path,"kubernetes-client-script.py")
+        omUtils.makeFileExecutable(path_kubernetes_client_script)
+
+        with open(self.__get_path_logs(),"a") as log_output:
+            function = "__runKubernetesClientScript"
+            log_output.write(f"\n=================== {function}() {datetime.now()} ===================\n")
+
+        flags = " -n " + namespace + " -bp "+ base_path + " --image_pull_policy IfNotPresent "
+        cmd = "python3 " + os.path.join(base_path,"kubernetes-client-script.py") + flags
+        with open(self.__get_path_logs(),"a") as log_output:
+            args = shlex.split(cmd)
+            subprocess.run(args, check=True, stdout=log_output)
 
     def __pull_images(self):
         image_names = self.__get_image_names()
