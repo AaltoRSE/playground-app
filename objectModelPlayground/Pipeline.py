@@ -235,7 +235,7 @@ class Pipeline:
             self.__create_namespace()
             self.logger.info("__runKubernetesClientScript()..")
             self.__run_kubernetes_client_script()
-            self._prepare_jupyter()
+            self.__run_jupyter_deployment_script()
 
             self.logger.info("__runKubernetesClientScript() done!")
         except Exception as e:
@@ -249,44 +249,6 @@ class Pipeline:
         self.__run_and_log(cmd, "__rolloutRestartDeployments()")
         self.__wait_until_ready(timeout_seconds=10)
 
-    def _prepare_jupyter(self):
-        self._send_protos_to_jupyter()
-        self._send_deployment_to_jupyter()
-
-
-    def _send_to_jupyter(self, source, destination):
-        self.__wait_until_ready()
-        self.logger.info("Pipeline._send_files_to_jupyter() ..")
-
-        pod_name_jupyter = self._get_pod_name_jupyter()
-        if pod_name_jupyter is None:
-            return
-        try:
-            shared_folder = self.get_orchestrator().get_shared_folder_path()
-            self.logger.info("shared_folder = " + shared_folder)
-            
-            destination_full = pod_name_jupyter + ":" + shared_folder + f"/{destination}/"
-        except:
-            destination_full = pod_name_jupyter + f":/home/joyan/{destination}/"
-        self.logger.info(f"destination = {destination_full}")
-        cmd = f"kubectl -n {self.__get_namespace()} cp {source} {destination_full}"
-        self._runcmd(cmd)
-
-    def _send_deployment_to_jupyter(self):
-        self.__wait_until_ready()
-        self.logger.info("Pipeline._send_deployment_to_jupyter() ..")
-        
-        yamls_path = self.get_orchestrator().get_yamls_path()
-        self.logger.info(f"yamls_path = {yamls_path}")
-        self._send_to_jupyter(source=yamls_path, destination="jupyter_connect_tools/deployments")
-
-    def _send_protos_to_jupyter(self):
-        self.__wait_until_ready()
-        self.logger.info("Pipeline._send_proto_to_jupyter() ..")
-        
-        protofiles_path = self.get_orchestrator().get_protofiles_path()+"/"
-        self.logger.info(f"protofiles_path = {protofiles_path}")
-        self._send_to_jupyter(source=protofiles_path, destination="jupyter_connect_tools/microservice")
 
     def _get_token_jupyter(self):
         self.logger.info("_get_token_jupyter()")
@@ -319,8 +281,6 @@ class Pipeline:
         #ToDo Define final image name.
         self.logger.info("_get_pod_name_jupyter()")
         JUPYTER_IMAGES = ["registry.gitlab.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-connect:latest", \
-                          "registry.gitlab.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-lab:custom-jupyter", \
-                          "hub.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-lab", "hub.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-lab:latest", \
                           "hub.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-connect", "hub.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-connect:latest"]
 
         image_names, container_names_yaml = self.__get_image_container_names()
@@ -384,15 +344,37 @@ class Pipeline:
         namespace = self.__get_namespace()
 
         base_path = self.__get_path_solution_user_pipeline()
-        path_kubernetes_client_script = os.path.join(base_path,"kubernetes-client-script.py")
-        omUtils.makeFileExecutable(path_kubernetes_client_script)
+        script = os.path.join(base_path,"kubernetes-client-script.py")
+        omUtils.makeFileExecutable(script)
 
         with open(self.__get_path_logs(),"a") as log_output:
-            function = "__runKubernetesClientScript"
+            function = "__run_kubernetes_client_script"
             log_output.write(f"\n=================== {function}() {datetime.now()} ===================\n")
 
         flags = " -n " + namespace + " -bp "+ base_path + " --image_pull_policy IfNotPresent "
-        cmd = "python3 " + os.path.join(base_path,"kubernetes-client-script.py") + flags
+        cmd = "python3 " + script + flags
+        with open(self.__get_path_logs(),"a") as log_output:
+            args = shlex.split(cmd)
+            subprocess.run(args, check=True, stdout=log_output)
+
+    def __run_jupyter_deployment_script(self):
+        namespace = self.__get_namespace()
+        logging.info(f"namespace {namespace}")
+        base_path = self.__get_path_solution_user_pipeline()
+        script = os.path.join(base_path,"jupyter-deployment-script.py")
+        logging.info(f"namespace {namespace}")
+        if(not os.path.exists(script)):
+            return
+
+        omUtils.makeFileExecutable(script)
+
+        with open(self.__get_path_logs(),"a") as log_output:
+            function = "__run_jupyter_deployment_script"
+            log_output.write(f"\n=================== {function}() {datetime.now()} ===================\n")
+
+        flags = " -n " + namespace + " -bp "+ base_path + " "
+        cmd = "python3 " + script + flags
+        self.__wait_until_ready()
         with open(self.__get_path_logs(),"a") as log_output:
             args = shlex.split(cmd)
             subprocess.run(args, check=True, stdout=log_output)
