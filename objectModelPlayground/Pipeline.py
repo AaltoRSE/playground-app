@@ -234,7 +234,7 @@ class Pipeline:
             self.__pull_images()
             self.__create_namespace()
             self.logger.info("__runKubernetesClientScript()..")
-            self.__runKubernetesClientScript()
+            self.__run_kubernetes_client_script()
             self._prepare_jupyter()
 
             self.logger.info("__runKubernetesClientScript() done!")
@@ -380,7 +380,7 @@ class Pipeline:
     def __has_shared_folder(self):
         return self.get_orchestrator().has_shared_folder()
 
-    def __runKubernetesClientScript(self):
+    def __run_kubernetes_client_script(self):
         namespace = self.__get_namespace()
 
         base_path = self.__get_path_solution_user_pipeline()
