@@ -277,7 +277,7 @@ class Pipeline:
         self.__wait_until_ready()
         self.logger.info("Pipeline._send_deployment_to_jupyter() ..")
         
-        yamls_path = self.get_orchestrator().get_yamls_path()+"/"
+        yamls_path = self.get_orchestrator().get_yamls_path()
         self.logger.info(f"yamls_path = {yamls_path}")
         self._send_to_jupyter(source=yamls_path, destination="jupyter_connect_tools/deployments")
 
