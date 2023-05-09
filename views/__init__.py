@@ -162,7 +162,7 @@ def dir_listing():
         req_path = req_path.lstrip("/")
     abs_path = os.path.join(BASE_DIR, req_path)
 
-    if not os.path.exists(abs_path):
+    if (not os.path.exists(abs_path)) or ('..' in req_path):
         return abort(404)
 
         # Check if path is a file and serve

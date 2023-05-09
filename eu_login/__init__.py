@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 
 cas_client = CASClient(
     version=3,
-    service_url='https://playground.ki-lab.nrw/oauth/login',
-    server_url='https://ecas.ec.europa.eu/cas/path' # the last segment is a dummy and will be replaced by urljoin
+    service_url='https://mwtest.ai4eu-dev.eu:9443/oauth/login',
+    server_url='https://ecas.acceptance.ec.europa.eu/cas/path' # the last segment is a dummy and will be replaced by urljoin
 )
 
 
