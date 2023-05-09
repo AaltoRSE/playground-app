@@ -382,6 +382,7 @@ class Pipeline:
     def __pull_images(self):
         image_names = self.__get_image_names()
         for image_name in image_names:
+            self.logger.info(f"pulling image {image_name} ..")
             self.__docker_pull(image_name)
 
     def __docker_pull(self, image):
@@ -459,14 +460,13 @@ class Pipeline:
             image_name = data[index_search_string + 1]
             image_name = image_name.rstrip('\n')
 
-            self.logger.info("imageName: " + image_name)
             return image_name
 
     def __get_path_solution_user_pipeline(self):
-        return self.__get_path_solution_user() + "/" + self.__get_namespace()
+        return os.path.join(self.__get_path_solution_user(), self.__get_namespace())
 
     def __get_path_solution_user(self):
-        return self.__path_solutions + "/" + self.__user_name
+        return os.path.join(self.__path_solutions, self.__user_name)
 
     def __get_namespace(self):
         return self.__namespace
