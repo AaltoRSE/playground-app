@@ -441,10 +441,10 @@ class Pipeline:
             self.logger.error(e)
 
     def __get_path_logs(self):
-        return self.__get_path_solution_user_pipeline() + "/logs.txt"
+        return os.path.join(self.__get_path_solution_user_pipeline(), "logs.txt")
 
     def __get_image_names(self):
-        pathDeploymentsSolution = self.__get_path_solution_user_pipeline() + "/deployments"
+        pathDeploymentsSolution = os.path.join(self.__get_path_solution_user_pipeline(), "deployments")
         paths = glob.glob(pathDeploymentsSolution + "/*deployment.yaml")
         image_names = []
         for path in paths:
