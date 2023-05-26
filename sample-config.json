@@ -1,0 +1,10 @@
+{
+    "allowed_ip_addresses": ["IP1","IP2"],
+    "host": "0.0.0.0",
+    "port": 6080,
+    "https_chain": "chain",
+    "https_key": "/etc/letsencrypt/***/privkey.pem",
+    "service_url": "/etc/letsencrypt/***/fullchain.pem",
+    "server_url": "https://test/",
+    "login_config": "dev-login"
+}

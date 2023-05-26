@@ -13,18 +13,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============LICENSE_END==========================================================
-from flask import Flask, session
+from flask import Flask
 from flask_bootstrap import Bootstrap
 import logging
 import os
+from config_importer import import_config
 
 logger = logging.getLogger(__name__)
+config_file_path = "config.json"
+config = import_config(config_file_path)
+
 app = Flask(__name__)
-os.environ['LOGIN_CONFIG'] = 'dev-login'
+os.environ['LOGIN_CONFIG'] = "dev-login" if config.get("login_config") is None else config.get("login_config")
 from views import *
 
 if __name__ == "__main__":
-    app.secret_key = 'dev'
+    app.secret_key = 'dev' if os.environ.get('SECRET_KEY') is None else os.environ['SECRET_KEY']
+
     bootstrap = Bootstrap(app)
     logger.info("Starting UI")
-    app.run()
+
+    context = None
+    if config.get("https_chain") and config.get("https_key"):
+        context = (config.get("https_chain"), config.get("https_key"))
+
+    app.run(host=config.get("host"), port=config.get("port"), ssl_context=context)

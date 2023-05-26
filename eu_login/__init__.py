@@ -18,13 +18,25 @@ from cas import CASClient
 from app import app
 import logging
 from binascii import hexlify
+from config_importer import import_config
 
 logger = logging.getLogger(__name__)
 
+
+config_file_path = "config.json"
+config = import_config(config_file_path)
+service_url = config.get('service_url')
+server_url = config.get('server_url')
+if service_url is None or server_url is None:
+    logger.error(f"service_url: {service_url}")
+    logger.error(f"server_url: {server_url}")
+    raise("config.json is missing values")
+
+
 cas_client = CASClient(
     version=3,
-    service_url='https://mwtest.ai4eu-dev.eu:9443/oauth/login',
-    server_url='https://ecas.acceptance.ec.europa.eu/cas/path' # the last segment is a dummy and will be replaced by urljoin
+    service_url=service_url,
+    server_url=server_url # the last segment is a dummy and will be replaced by urljoin
 )
 
 
