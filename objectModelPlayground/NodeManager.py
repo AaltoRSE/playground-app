@@ -109,45 +109,48 @@ class NodeManager:
             logger.info(e)
 
     def _get_logs(self, pod):
-        logger.info("getLogs of pod %s ..", self._get_pod_name(pod))
+        pod_name = self._get_pod_name(pod)
+        logger.info(f"Getting logs of pod {pod_name} ..")
         if(self._is_broken(pod)):
+            logger.warning(f"Pod {pod_name} is broken.")
             return ""
 
-        self._wait_until_ready(pod, 7)
+        self._wait_until_ready(pod, timeout_seconds=7)
+
+        kubectl_command = ['kubectl', '-n', self.namespace, 'logs', pod_name]
         try:
-            process = subprocess.run(['kubectl', '-n', self.namespace, 'logs',
-                                     self._get_pod_name(pod)], check=True,
-                                     stdout=subprocess.PIPE,
-                                     universal_newlines=True, timeout=1)
-            logs = process.stdout
-            return logs
+            process = subprocess.run(kubectl_command, check=True, stdout=subprocess.PIPE, universal_newlines=True, timeout=1)
+            return process.stdout
         except Exception as e:
-            logger.info("Exception in _getLogs")
-            logger.info(e)
+            logger.error("Exception occurred while getting pod logs.", exc_info=True)
             return ""
 
     def _is_broken(self, pod):
-        name = self._get_pod_name(pod)
-        process = subprocess.run(
-            ["kubectl", "-n", self.namespace, "get", "pod", name],
-            check=True, stdout=subprocess.PIPE, universal_newlines=True)
-        out = process.stdout
+        pod_name = self._get_pod_name(pod)
+        kubectl_command = ["kubectl", "-n", self.namespace, "get", "pod", pod_name]
 
-        brokenstrings = ["ImagePullBackOff", "InvalidImageName", "ErrImagePull"]
-        for brokenstring in brokenstrings:
-            if brokenstring in out:
-                logger.info(f"Status of pod: {brokenstring}")
-                return True
+        try:
+            process = subprocess.run(kubectl_command, check=True, stdout=subprocess.PIPE, universal_newlines=True)
+            pod_status = process.stdout
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error occurred while getting pod status. {str(e)}")
+            return False
+
+        broken_statuses = ["ImagePullBackOff", "InvalidImageName", "ErrImagePull"]
+
+        if any(broken_status in pod_status for broken_status in broken_statuses):
+            logger.info(f"Pod {pod_name} is broken. Status: {pod_status}")
+            return True
 
         return False
 
     def _wait_until_ready(self, pod, timeout_seconds, time_passed=0):
         pod_name = self._get_pod_name(pod)
-        while ((not self._is_ready_kubectl(pod))
-                and (time_passed < timeout_seconds)):
-            logger.info(f"Pipeline {self.namespace} is not ready yet. Waiting for Pod {pod_name}. Waiting {str(time_passed)}/{str(timeout_seconds)} seconds ..")
-            time_passed += 1
+        while not self._is_ready_kubectl(pod) and time_passed < timeout_seconds:
+            logger.info(f"Pipeline {self.namespace} is not ready yet. Waiting for Pod {pod_name}. Waiting {time_passed}/{timeout_seconds} seconds ..")
             time.sleep(1)
+            time_passed += 1
+
         return time_passed
 
     def _get_host_ip(self, pod):
@@ -155,16 +158,23 @@ class NodeManager:
 
     def _get_status_details(self, pod):
         pod_name = self._get_pod_name(pod)
-        process = subprocess.run(
-            ["kubectl", "-n", self.namespace, "get", "pod", pod_name],
-            check=True, stdout=subprocess.PIPE, universal_newlines=True)
+        kubectl_command = ["kubectl", "-n", self.namespace, "get", "pod", pod_name]
 
-        result = "-------------------------------------------------\n"
-        result += "Short Status: \n\n"
-        result += str(process.stdout)
-        result += "\n\n-------------------------------------------------\n"
-        result += "Extensive Status: \n\n"
-        result += str(pod.status.container_statuses)
+        try:
+            process = subprocess.run(kubectl_command, check=True, stdout=subprocess.PIPE, universal_newlines=True)
+            pod_status = process.stdout
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error occurred while getting pod status. {str(e)}")
+            return ""
+
+        result = (
+            "-------------------------------------------------\n"
+            "Short Status: \n\n"
+            f"{pod_status}\n\n"
+            "-------------------------------------------------\n"
+            "Extensive Status: \n\n"
+            f"{pod.status.container_statuses}"
+        )
         return result
     
     def _get_pod_metadata(self, pod):
@@ -209,18 +219,20 @@ class NodeManager:
         return False
 
     def _is_ready_kubectl(self, pod):
-        name = self._get_pod_name(pod)
-        process = subprocess.run(
-            ["kubectl", "-n", self.namespace, "get", "pod", name],
-            check=True, stdout=subprocess.PIPE, universal_newlines=True)
-        out = process.stdout
-        # logger.info(f"_isReadyKubectl. out = {out}")
+        pod_name = self._get_pod_name(pod)
+        kubectl_command = ["kubectl", "-n", self.namespace, "get", "pod", pod_name]
 
-        if "Running" in out and ("1/1" in out or "2/2" in out):
+        try:
+            process = subprocess.run(kubectl_command, check=True, stdout=subprocess.PIPE, universal_newlines=True)
+            pod_status = process.stdout
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error occurred while getting pod status. {str(e)}")
+            return False
+
+        if "Running" in pod_status and any(x in pod_status for x in ["1/1", "2/2"]):
             return True
 
-        logger.info(out)
-
+        logger.info(pod_status)
         return False
 
     def __get_pods(self):
