@@ -38,7 +38,6 @@ def checkloginpassword():
     session["username"] = username
     session["userfirstname"] = username
     if username in users:
-        current_user = username
         return "correct"
     else:
         return "wrong"
@@ -47,7 +46,6 @@ def checkloginpassword():
 def checkusername():
     username = hexlify(request.form["username"].lower().strip().encode()).decode('utf-8')
     if username not in users:
-        current_user = username
         return "Available"
     else:
         return "Username taken"
