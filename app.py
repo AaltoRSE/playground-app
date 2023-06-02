@@ -19,7 +19,9 @@ import logging
 import os
 from config_importer import import_config
 
-logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, 
+                    format='%(asctime)s - %(filename)s - %(levelname)s - %(message)s')
+
 config_file_path = "config.json"
 config = import_config(config_file_path)
 
@@ -31,7 +33,7 @@ if __name__ == "__main__":
     app.secret_key = 'dev' if os.environ.get('SECRET_KEY') is None else os.environ['SECRET_KEY']
 
     bootstrap = Bootstrap(app)
-    logger.info("Starting UI")
+    logging.info("Starting UI")
 
     context = None
     if config.get("https_chain") and config.get("https_key"):
