@@ -20,7 +20,7 @@ import os
 from config_importer import import_config
 
 logging.basicConfig(level=logging.INFO, 
-                    format='%(asctime)s - %(filename)s - %(levelname)s - %(message)s')
+                    format='%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s')
 
 config_file_path = "config.json"
 config = import_config(config_file_path)
