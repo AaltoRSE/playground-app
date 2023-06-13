@@ -30,6 +30,11 @@ class PipelineManager:
         self.logger.info("PipelineManager class initialized")
         # self.pipelines = {}
 
+    def is_healthy(self, username, pipeline_id):
+        if pipeline_id is None:
+            return False
+        pipeline = self.get_pipeline(user_name=username, pipeline_id=pipeline_id)
+        return pipeline.is_healthy()
 
     def remove_all_pipelines(self):
         userNames = self.get_user_names()

@@ -55,6 +55,38 @@ pm = PipelineManager(pathSolutions)
 def get_base_dir(user, deployment):
     return os.path.join(os.getcwd(), "solutions", user, deployment)
 
+def get_current_deployment_id():
+    user = session.get('username')
+    deployment_id = session.get('current_deployment_id')
+    
+    if deployment_id is not None:
+        return deployment_id
+
+    deployment_list = pm.get_pipelines_user(user)
+
+    return deployment_list[0].get_pipeline_id() if deployment_list else None
+
+def clean_session():
+    user = session.get('username')
+    deployment_list = pm.get_pipelines_user(user)
+    logging.info(f"deployment_list {deployment_list}")
+    deployment_id = session.pop('current_deployment_id', None)
+
+    if deployment_id is None and deployment_list:
+        pm.remove_pipeline(get_current_deployment_id())
+    elif deployment_id is None:
+        logging.error("No Pipeline to remove!")
+
+def clean_deployments():
+    user = session.get('username')
+
+    while True:
+        current_deployment_id = get_current_deployment_id()
+        if current_deployment_id is None or pm.is_healthy(user, current_deployment_id):
+            break
+        clean_session()
+
+
 @app.errorhandler(Exception)
 def handle_error(e):
     code = 500
@@ -62,7 +94,7 @@ def handle_error(e):
     print(f'handle_error(): {e}')
     try:
         x,pipeline_id = e.args
-        if(pipeline_id in pm.get_pipeline_ids(session['username'])):
+        if(pipeline_id in pm.get_pipeline_ids(session.get('username'))):
             _remove_pipeline(pipeline_id=pipeline_id)
     except:
         pass
@@ -77,24 +109,23 @@ def home():
         if "username" not in session:
             return render_login()
         else:
-            pipelines = pm.get_pipeline_ids(session['username'])
+            pipelines = pm.get_pipeline_ids(session.get('username'))
             if len(pipelines) > 0:
                 return redirect('/dashboard')
 
     return render_template('index.html')
 
-
 @app.route('/dashboard', methods=['GET'])
 @logged_in
 def dashboard():
     logger.info("show deployments..")
-    user = session['username']
+    user = session.get('username')
     deployment_list = pm.get_pipelines_user(user)
     if len(deployment_list) < 1:
         return redirect('/')
 
-    # set the current deployment
-    current_deployment_id = session['current_deployment_id'] if 'current_deployment_id' in session else deployment_list[0].get_pipeline_id()
+    clean_session()
+    current_deployment_id=get_current_deployment_id()
     selection = request.args.get('selected_deployment_id', 'None', type=str)
     if selection != 'None' and selection in pm.get_pipeline_ids(user):
         current_deployment_id = selection
@@ -117,7 +148,7 @@ def dashboard():
 def reset():
     logger.info("Reset Deployment..")
     if 'current_deployment_id' in session:
-        pipeline = pm.get_pipeline(user_name=session['username'], pipeline_id=session['current_deployment_id'])
+        pipeline = pm.get_pipeline(user_name=session.get('username'), pipeline_id=session.get('current_deployment_id'))
         pipeline.pull_and_rollout()
         session['refresh'] = [3,3]
         logger.info("Reset Deployment successful.")
@@ -126,7 +157,7 @@ def reset():
 
 
 def _remove_pipeline(pipeline_id):
-    pipeline = pm.get_pipeline(user_name=session['username'], pipeline_id=pipeline_id)
+    pipeline = pm.get_pipeline(user_name=session.get('username'), pipeline_id=pipeline_id)
     pipeline.remove_pipeline()
 
 @app.route('/delete', methods=['GET'])
@@ -134,7 +165,7 @@ def _remove_pipeline(pipeline_id):
 def delete():
     logger.info("Delete Deployments")
     if 'current_deployment_id' in session:
-        _remove_pipeline(pipeline_id=session['current_deployment_id'])
+        _remove_pipeline(pipeline_id=session.get('current_deployment_id'))
         session.pop('current_deployment_id')
 
     return redirect('/')  # redirect to home page with message
@@ -144,7 +175,7 @@ def delete():
 @logged_in
 def logs():
     if 'current_deployment_id' in session:
-        pipeline = pm.get_pipeline(user_name=session['username'], pipeline_id=session['current_deployment_id'])
+        pipeline = pm.get_pipeline(user_name=session.get('username'), pipeline_id=session.get('current_deployment_id'))
         logs = pipeline.get_pipeline_logs().split("\n")
         return render_template('logs.html', text=logs)
 
@@ -154,7 +185,7 @@ def logs():
 @logged_in
 def dir_listing():
     req_path = request.args.get('path', default='', type=str)
-    pipeline = pm.get_pipeline(user_name=session['username'], pipeline_id=session['current_deployment_id'])
+    pipeline = pm.get_pipeline(user_name=session.get('username'), pipeline_id=session.get('current_deployment_id'))
     BASE_DIR = pipeline.get_shared_folder_path()
     print(f"BASE_DIR = {BASE_DIR}")
 
@@ -177,10 +208,10 @@ def dir_listing():
 @app.route('/run', methods=['GET'])
 @logged_in
 def run():
-    pipeline = pm.get_pipeline(user_name=session['username'], pipeline_id=session['current_deployment_id'])
+    pipeline = pm.get_pipeline(user_name=session.get('username'), pipeline_id=session.get('current_deployment_id'))
     # pipeline.runOrchestratorClient()
-    pipelineThreads[session['username']] = threading.Thread(target=pipeline.run_orchestrator_client, args=())
-    pipelineThreads[session['username']].start()
+    pipelineThreads[session.get('username')] = threading.Thread(target=pipeline.run_orchestrator_client, args=())
+    pipelineThreads[session.get('username')].start()
     session['refresh'] = [3,3,3,3,3]
 
     return redirect('/dashboard')  # redirect to home page with message
