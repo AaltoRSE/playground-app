@@ -62,30 +62,25 @@ def get_current_deployment_id():
     if deployment_id is not None:
         return deployment_id
 
-    deployment_list = pm.get_pipelines_user(user)
+    pipeline_ids = pm.get_pipeline_ids(user)
 
-    return deployment_list[0].get_pipeline_id() if deployment_list else None
+    return pipeline_ids[0] if pipeline_ids else None
 
-def clean_session():
-    user = session.get('username')
-    deployment_list = pm.get_pipelines_user(user)
-    logging.info(f"deployment_list {deployment_list}")
-    deployment_id = session.pop('current_deployment_id', None)
 
-    if deployment_id is None and deployment_list:
-        pm.remove_pipeline(get_current_deployment_id())
-    elif deployment_id is None:
-        logging.error("No Pipeline to remove!")
+def clean_current_deployment():
 
-def clean_deployments():
     user = session.get('username')
 
     while True:
         current_deployment_id = get_current_deployment_id()
-        if current_deployment_id is None or pm.is_healthy(user, current_deployment_id):
+        if current_deployment_id is None:
             break
-        clean_session()
 
+        if pm.is_healthy(user, current_deployment_id) and current_deployment_id in pm.get_pipeline_ids(user_name=user):
+            break
+
+        session.pop('current_deployment_id')
+        pm.remove_pipeline(user_name=user, pipeline_id=current_deployment_id)
 
 @app.errorhandler(Exception)
 def handle_error(e):
@@ -124,7 +119,7 @@ def dashboard():
     if len(deployment_list) < 1:
         return redirect('/')
 
-    clean_session()
+    clean_current_deployment()
     current_deployment_id=get_current_deployment_id()
     selection = request.args.get('selected_deployment_id', 'None', type=str)
     if selection != 'None' and selection in pm.get_pipeline_ids(user):
