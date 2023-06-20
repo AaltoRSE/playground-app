@@ -49,15 +49,16 @@ class Pipeline:
             self.__namespace = pipeline_id.lower()
         self.logger.info("Pipeline class initialized")
 
+    def is_namespace_existent(self):
+        cmd = f"kubectl get ns"
+        namespaces = self._runcmd(cmd)
+        self.logger.info(namespaces)
+        return self.__get_namespace() in namespaces
+
     def is_healthy(self):
         if not os.path.exists(self.__get_path_solution_user_pipeline()):
             return False
-        cmd = f"kubectl get ns"
-        out = self._runcmd(cmd)
-        self.logger.debug(out)
-
-        if not self.__get_namespace() in out:
-            return False
+        return self.is_namespace_existent()
 
     def get_shared_folder_status(self):
         if not self.__has_shared_folder():
@@ -150,13 +151,13 @@ class Pipeline:
     #     self.__rolloutRestartDeployment(deployment_name)
 
     def remove_pipeline(self):
-        self.logger.info("removePipeline()..")
+        self.logger.info(f"removePipeline(): {self.__get_namespace()}")
+        pipeline_thread = threading.Thread(target=self.__delete_namespace, args=())
+        pipeline_thread.start()
         try:
             self.__remove_path_solution_user_pipeline()
         except Exception as e:
             print(e)
-        pipeline_thread = threading.Thread(target=self.__delete_namespace, args=())
-        pipeline_thread.start()
 
     def _is_running(self, timeout_seconds=100):
         self.__wait_until_ready(timeout_seconds)
