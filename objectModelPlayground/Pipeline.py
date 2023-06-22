@@ -53,8 +53,8 @@ class Pipeline:
         self.v1 = client.CoreV1Api()
 
     def is_namespace_existent(self):
-        cmd = f"kubectl get ns"
-        namespaces = self._runcmd(cmd)
+        namespaces = self.v1.list_namespace().items
+        namespaces = [ns.metadata.name for ns in namespaces]
         self.logger.info(namespaces)
         return self.__get_namespace() in namespaces
 
@@ -73,13 +73,17 @@ class Pipeline:
         if not self.__has_shared_folder():
             return None
         pvc = self._get_pvc()
-        cmd = f"kubectl get pv {pvc} -o json"
-
-        out = self._runcmd(cmd)
-        out_json = json.loads(out)
-        pvc_path = out_json["spec"]["hostPath"]["path"]
-
-        return pvc_path
+        print(pvc)
+        
+        # Get the corresponding PV for the PVC
+        pv = self.v1.read_persistent_volume(name=pvc)
+        # print(pv)
+        if pv.spec.host_path is not None:
+            pvc_path = pv.spec.host_path.path
+            print(f"Host path: {pvc_path}")
+            return pvc_path
+        print("Host path not available for this PV")
+        return None
 
     def get_pipeline_name(self):
         try:
@@ -213,11 +217,9 @@ class Pipeline:
             return None
 
     def _get_pvc(self):
-        cmd = f"kubectl -n {self.__get_namespace()} get pvc"
-        out = self._runcmd(cmd)     
-        if "No resources found" in out:
-            return False
-        return out.split()[10]
+        api_response = self.v1.list_namespaced_persistent_volume_claim(self.__get_namespace())
+        pvc = api_response.items[0]
+        return pvc.spec.volume_name
 
     def _get_endpoint_orchestrator(self):
         host_ip = self._get_node_manager().get_host_ip()
