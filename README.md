@@ -4,8 +4,9 @@
 
 1. Install Python requirements
 ```
-virtualenv -p /usr/bin/python3 grpc
-source grpc/bin/activate
+PLAYGROUND_VENV=~/.grpc
+virtualenv -p /usr/bin/python3 $PLAYGROUND_VENV
+source $PLAYGROUND_VENV/bin/activate
 pip install -r requirements.txt 
 ```
 
