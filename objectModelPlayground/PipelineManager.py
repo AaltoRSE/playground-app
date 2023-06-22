@@ -66,6 +66,14 @@ class PipelineManager:
         pipelines_user.sort(key=self._get_pipeline_id)
         return pipelines_user
 
+    def get_pipeline_ids_all_users(self):
+        user_names = self.get_user_names()
+        logging.info(f"user_names={user_names}")
+        pipeline_ids = []
+        for user_name in user_names:
+            pipeline_ids += self.get_pipeline_ids(user_name=user_name)
+        return pipeline_ids
+
     def get_pipeline_ids(self, user_name):
         path_solutions = self.pathSolutions + user_name
         if not os.path.isdir(path_solutions):
