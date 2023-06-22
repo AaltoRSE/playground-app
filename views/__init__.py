@@ -79,7 +79,7 @@ def clean_current_deployment():
         if pm.is_healthy(user, current_deployment_id) and current_deployment_id in pm.get_pipeline_ids(user_name=user):
             break
 
-        session.pop('current_deployment_id')
+        session.pop('current_deployment_id', None)
         pm.remove_pipeline(user_name=user, pipeline_id=current_deployment_id)
 
 @app.errorhandler(Exception)
