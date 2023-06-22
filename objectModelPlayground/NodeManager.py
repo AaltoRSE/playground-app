@@ -28,6 +28,8 @@ class NodeManager:
     def __init__(self, namespace):
         logger.info("Nodes class initialized")
         self.namespace = namespace
+        config.load_kube_config()
+        self.v1 = client.CoreV1Api()
 
     def get_pods_status(self):
         # what about other states like: running, finished. we need thread-information here
@@ -237,9 +239,8 @@ class NodeManager:
 
     def __get_pods(self):
         config.load_kube_config()
-        v1 = client.CoreV1Api()
         # ToDo namespaced_service??
-        return v1.list_namespaced_pod(namespace=self.namespace).items
+        return self.v1.list_namespaced_pod(namespace=self.namespace).items
 
     def __is_ready(self, pod):
         try:

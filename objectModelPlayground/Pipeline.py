@@ -31,6 +31,7 @@ import objectModelPlayground.ObjectModelUtils as omUtils
 import objectModelPlayground.status_client as status_client
 import logging
 logging.basicConfig(level=logging.INFO)
+from kubernetes import client, config
 
 
 class Pipeline:
@@ -48,6 +49,8 @@ class Pipeline:
         else:
             self.__namespace = pipeline_id.lower()
         self.logger.info("Pipeline class initialized")
+        config.load_kube_config()
+        self.v1 = client.CoreV1Api()
 
     def is_namespace_existent(self):
         cmd = f"kubectl get ns"
@@ -141,19 +144,9 @@ class Pipeline:
         self.__pull_images()
         self.__rollout_restart_deployments()
 
-    # def restartDeployments(self):
-    #     with open(self.getPathLogs(),"a") as log_output:
-    #         log_output.write("--------------------------------\n")
-    #         log_output.write("Logs restartDeployments()\n")
-    #     self.__rolloutRestartDeployments()
-
-    # def restartDeployment(self, deployment_name):
-    #     self.__rolloutRestartDeployment(deployment_name)
-
     def remove_pipeline(self):
         self.logger.info(f"removePipeline(): {self.__get_namespace()}")
-        pipeline_thread = threading.Thread(target=self.__delete_namespace, args=())
-        pipeline_thread.start()
+        self.__delete_namespace()
         try:
             self.__remove_path_solution_user_pipeline()
         except Exception as e:
@@ -451,9 +444,11 @@ class Pipeline:
 
     def __delete_namespace(self):
         try:
-            subprocess.run(["kubectl", "delete", "ns", self.__get_namespace()], check=True)
-        except Exception as e:
-            self.logger.error(e)
+            # Invoke the delete_namespace API.
+            api_response = self.v1.delete_namespace(name=self.__get_namespace())
+            self.logger.info("Namespace deleted. status='%s'" % str(api_response.status))
+        except client.exceptions.ApiException as e:
+            self.logger.error("Exception when calling CoreV1Api->delete_namespace: %s\n" % e)
 
     def __get_path_logs(self):
         return os.path.join(self.__get_path_solution_user_pipeline(), "logs.txt")
