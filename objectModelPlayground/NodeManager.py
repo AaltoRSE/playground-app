@@ -16,7 +16,7 @@
 import time
 import logging
 import subprocess
-
+from datetime import datetime, timezone
 from kubernetes import client, config
 
 
@@ -37,15 +37,16 @@ class NodeManager:
         pods = self.__get_pods()
         if len(pods) == 0:
             return 'Not Ready'
-        for pod in self.__get_pods():
-            if(self._is_terminating(pod)):
+        for pod in pods:
+            if(self._is_pod_terminating(pod)):
                 continue
             if not self.__is_ready(pod):
                 return 'Not Ready'
         return 'Ready'
 
-    def get_host_ip(self):
-        pods = self.__get_pods()
+    def get_host_ip(self, pods=None):
+        if pods==None:
+            pods = self.__get_pods()
         host_ip = self._get_host_ip(pods[0])
         if host_ip is None:
             return "unknownHostIP"
@@ -61,12 +62,12 @@ class NodeManager:
     def get_logs(self, container_name):
         self.wait_until_ready()
         for pod in self.__get_pods():
-            container_name1_kubectl = self._get_pod_name(pod)
-            logger.info(f"container_name1_kubectl = {container_name1_kubectl}")
-            if(self._is_terminating(pod)):
+            pod_name = self._get_pod_name(pod)
+            logger.info(f"pod_name = {pod_name}")
+            if(self._is_pod_terminating(pod)):
                 continue
-            logger.info(f"container Name = {container_name1_kubectl}")
-            if(container_name1_kubectl == container_name):
+            logger.info(f"pod Name = {pod_name}")
+            if(pod_name == container_name):
                 logs = self._get_logs(pod)
                 return logs
                 
@@ -75,7 +76,7 @@ class NodeManager:
         logger.info("getPodsInformation ..")
         pods_information = []
         for pod in self.__get_pods():
-            if(self._is_terminating(pod)):
+            if(self._is_pod_terminating(pod)):
                 continue
             pods_information.append(self._get_pod_information(pod))
         return pods_information
@@ -112,39 +113,37 @@ class NodeManager:
 
     def _get_logs(self, pod):
         pod_name = self._get_pod_name(pod)
-        logger.info(f"Getting logs of pod {pod_name} ..")
+
         if(self._is_broken(pod)):
             logger.warning(f"Pod {pod_name} is broken.")
             return ""
 
         self._wait_until_ready(pod, timeout_seconds=7)
 
-        kubectl_command = ['kubectl', '-n', self.namespace, 'logs', pod_name]
         try:
-            process = subprocess.run(kubectl_command, check=True, stdout=subprocess.PIPE, universal_newlines=True, timeout=1)
-            return process.stdout
-        except Exception as e:
-            logger.error("Exception occurred while getting pod logs.", exc_info=True)
-            return ""
+            print(f"Retrieving logs for pod '{pod_name}' in namespace '{self.namespace}':")
+            logs = self.v1.read_namespaced_pod_log(name=pod_name, namespace=self.namespace)
+            return(logs)
+        except client.exceptions.ApiException as e:
+            print("Exception when calling CoreV1Api->read_namespaced_pod_log: %s\n" % e)
 
     def _is_broken(self, pod):
         pod_name = self._get_pod_name(pod)
-        kubectl_command = ["kubectl", "-n", self.namespace, "get", "pod", pod_name]
-
         try:
-            process = subprocess.run(kubectl_command, check=True, stdout=subprocess.PIPE, universal_newlines=True)
-            pod_status = process.stdout
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Error occurred while getting pod status. {str(e)}")
-            return False
-
-        broken_statuses = ["ImagePullBackOff", "InvalidImageName", "ErrImagePull"]
-
-        if any(broken_status in pod_status for broken_status in broken_statuses):
-            logger.info(f"Pod {pod_name} is broken. Status: {pod_status}")
+            api_response = self.v1.read_namespaced_pod(name=pod_name, namespace=self.namespace)
+            for container_status in api_response.status.container_statuses:
+                if container_status.state.waiting is not None:
+                    print(f"Container {container_status.name} status: {container_status.state.waiting.reason}")
+                    return True
+                elif container_status.state.running is not None:
+                    print(f"Container {container_status.name} is running")
+                    return False
+                elif container_status.state.terminated is not None:
+                    print(f"Container {container_status.name} terminated with reason: {container_status.state.terminated.reason}")
+                    return True
+        except client.exceptions.ApiException as e:
+            print("Exception when calling CoreV1Api->read_namespaced_pod: %s\n" % e)
             return True
-
-        return False
 
     def _wait_until_ready(self, pod, timeout_seconds, time_passed=0):
         pod_name = self._get_pod_name(pod)
@@ -160,19 +159,28 @@ class NodeManager:
 
     def _get_status_details(self, pod):
         pod_name = self._get_pod_name(pod)
-        kubectl_command = ["kubectl", "-n", self.namespace, "get", "pod", pod_name]
+        pod_status = pod.status.phase
 
-        try:
-            process = subprocess.run(kubectl_command, check=True, stdout=subprocess.PIPE, universal_newlines=True)
-            pod_status = process.stdout
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Error occurred while getting pod status. {str(e)}")
-            return ""
+        num_ready_containers = len([c for c in pod.status.container_statuses if c.ready])
+        num_total_containers = len(pod.spec.containers)
+        num_restarts = sum(c.restart_count for c in pod.status.container_statuses)
+
+        create_time = pod.metadata.creation_timestamp
+        age = str(datetime.now(timezone.utc) - create_time)
+
+        # Format the information.
+        short_status = {
+            'name': pod_name,
+            'ready': f'{num_ready_containers}/{num_total_containers}',
+            'status': pod_status,
+            'restarts': num_restarts,
+            'age': age
+        }
 
         result = (
             "-------------------------------------------------\n"
             "Short Status: \n\n"
-            f"{pod_status}\n\n"
+            f"{short_status}\n\n"
             "-------------------------------------------------\n"
             "Extensive Status: \n\n"
             f"{pod.status.container_statuses}"
@@ -204,21 +212,19 @@ class NodeManager:
             logger.error("self.namespace = " + self.namespace)
             logger.error("pod.metadata.namespace = " + pod.metadata.namespace)
 
-    def _is_terminating(self, pod):
+    def _is_pod_terminating(self, pod):
         pod_name = self._get_pod_name(pod)
-        return self.is_terminating(pod_name=pod_name)
+        return self.is_pod_terminating(pod_name=pod_name)
 
-    def is_terminating(self, pod_name):
-        process = subprocess.run(
-            ["kubectl", "-n", self.namespace, "get", "pod", pod_name],
-            check=True, stdout=subprocess.PIPE, universal_newlines=True)
-        out = process.stdout
 
-        if "Terminating" in out:
-            logger.info("Status of pod: Terminating")
-            return True
+    def is_pod_terminating(self, pod_name):
+        try:
+            api_response = self.v1.read_namespaced_pod(name=pod_name, namespace=self.namespace)
+            return api_response.metadata.deletion_timestamp is not None
+        except client.exceptions.ApiException as e:
+            print("Exception when calling CoreV1Api->read_namespaced_pod: %s\n" % e)
+            return None
 
-        return False
 
     def _is_ready_kubectl(self, pod):
         pod_name = self._get_pod_name(pod)
@@ -238,9 +244,8 @@ class NodeManager:
         return False
 
     def __get_pods(self):
-        config.load_kube_config()
-        # ToDo namespaced_service??
-        return self.v1.list_namespaced_pod(namespace=self.namespace).items
+        self._pods = self.v1.list_namespaced_pod(namespace=self.namespace).items
+        return self._pods
 
     def __is_ready(self, pod):
         try:

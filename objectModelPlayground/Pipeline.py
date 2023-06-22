@@ -307,7 +307,7 @@ class Pipeline:
         for pod_name in pod_names:
             self.logger.info(f"name = {pod_name}")
             if container_name in pod_name:
-                if(self._get_node_manager().is_terminating(pod_name)):
+                if(self._get_node_manager().is_pod_terminating(pod_name)):
                     continue
                 self.logger.info(f"pod_name = {pod_name} \n\n\n")
                 return pod_name
