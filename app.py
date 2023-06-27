@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============LICENSE_END==========================================================
 from flask import Flask
-from flask_bootstrap import Bootstrap
+from flask_bootstrap import Bootstrap4
 import logging
 import os
 from config_importer import import_config
@@ -32,7 +32,7 @@ from views import *
 if __name__ == "__main__":
     app.secret_key = 'dev' if os.environ.get('SECRET_KEY') is None else os.environ['SECRET_KEY']
 
-    bootstrap = Bootstrap(app)
+    bootstrap = Bootstrap4(app)
     logging.info("Starting UI")
 
     context = None
