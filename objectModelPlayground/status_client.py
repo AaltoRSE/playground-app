@@ -44,10 +44,10 @@ def get_status_string(status):
 
 
 def is_running(endpoint):
-    logger.info("connecting to orchestrator")
+    logger.debug("connecting to orchestrator")
     channel = grpc.insecure_channel(endpoint)
     stub = orchestrator_pb2_grpc.OrchestratorStub(channel)
-    logger.info("calling get_status")
+    logger.debug("calling get_status")
     status = stub.get_status(orchestrator_pb2.RunLabel(label="test"))
-    logger.info("status: "+get_status_string(status))
+    logger.info("status orchestrator: "+get_status_string(status))
     return status.active_threads > 0

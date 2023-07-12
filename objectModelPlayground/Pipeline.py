@@ -55,7 +55,7 @@ class Pipeline:
     def is_namespace_existent(self):
         namespaces = self.v1.list_namespace().items
         namespaces = [ns.metadata.name for ns in namespaces]
-        self.logger.info(namespaces)
+        self.logger.info(f"Existing namespaces: {namespaces}")
         return self.__get_namespace() in namespaces
 
     def is_healthy(self):
@@ -169,12 +169,11 @@ class Pipeline:
         return NodeManager(self.__get_namespace())
 
     def _update_pods_information(self, pods_information):
-        orchestrator = self.get_orchestrator()
-
         for pod in pods_information:
             try:
                 port_web_ui = self._get_web_ui_port(pod=pod)
                 if port_web_ui is None:
+                    self.logger.info(f"No WebUI available for pod: {pod['Nodename']}")
                     pod["Web-UI"] = None
                 else:
                     pod["Web-UI"] = f"{pod.pop('hostIP')}:{port_web_ui}"
@@ -190,31 +189,33 @@ class Pipeline:
 
     def _get_web_ui_port(self, pod):
         container_name = pod["Nodename"]
-        container_name_web_ui = container_name+"webui"
+        service_name = container_name+"webui"
+        self.logger.info(f"service_name = {service_name}")
 
-        cmd = f"kubectl -n {self.__get_namespace()} get svc"
-        out = self._runcmd(cmd)     
-        lines = out.split("\n")
-        for line in lines:
-            if container_name_web_ui in line:
-                index_tcp = line.rfind("TCP")
-                webui_port = int(line[index_tcp-6:index_tcp-1])
-        if webui_port is None:
-            raise Exception("webui_port == None")
-
-
-
+        webui_port = self._get_node_port(service_name=service_name)
 
         host_ip = pod["hostIP"]
+
+        return str(webui_port) if self.__test_socket(host_ip, webui_port) else None
+
+    def _get_node_port(self, service_name):
+        try:
+            api_response = self.v1.read_namespaced_service(name=service_name, namespace=self.__get_namespace())
+
+            for port in api_response.spec.ports:
+                if port.node_port is not None:
+                    return port.node_port
+        except client.exceptions.ApiException as e:
+            print("Exception when calling CoreV1Api->read_namespaced_service: %s\n" % e)
+
+    def __test_socket(self, host_ip, webui_port):
         test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             test_socket.connect((host_ip, webui_port))
             # connection successful
-            return str(webui_port)
-        except Exception as e:
-            self.logger.debug(e)
-            self.logger.info(f"No WebUI available for pod: {pod['Nodename']}")
-            return None
+            return True
+        except Exception:
+            return False
 
     def _get_pvc(self):
         api_response = self.v1.list_namespaced_persistent_volume_claim(self.__get_namespace())
@@ -289,7 +290,7 @@ class Pipeline:
 
     def _get_pod_name_jupyter(self):
         #ToDo Define final image name.
-        self.logger.info("_get_pod_name_jupyter()")
+        self.logger.debug("_get_pod_name_jupyter()")
         JUPYTER_IMAGES = ["registry.gitlab.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-connect:latest", \
                           "hub.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-connect", "hub.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-connect:latest"]
 

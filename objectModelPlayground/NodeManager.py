@@ -15,18 +15,16 @@
 # ===============LICENSE_END==========================================================
 import time
 import logging
-import subprocess
 from datetime import datetime, timezone
 from kubernetes import client, config
 
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ObjectModelPlayground.NodeManager")
 
 
 class NodeManager:
     def __init__(self, namespace):
-        logger.info("Nodes class initialized")
+        logger.debug("Nodes class initialized")
         self.namespace = namespace
         config.load_kube_config()
         self.v1 = client.CoreV1Api()
@@ -83,15 +81,21 @@ class NodeManager:
 
     def wait_until_ready(self, timeout_seconds=120):
         for time_passed in range(timeout_seconds):
-            process = subprocess.run(
-                ["kubectl", "-n", self.namespace, "get", "pods", "--field-selector=status.phase!=Running"],
-                check=True, stdout=subprocess.PIPE, universal_newlines=True)
-            out = process.stdout
-            if len(out) == 0:
-                return
-            print("out =", out)
-            logger.info(f"Pipeline {self.namespace} is not ready yet. Waiting {str(time_passed)}/{str(timeout_seconds)} seconds ..")
+            try:
+                api_response = self.v1.list_namespaced_pod(self.namespace, field_selector='status.phase!=Running')
+
+                if len(api_response.items) == 0:
+                    return
+
+                logger.info(f"Not running pods: {[pod.metadata.name for pod in api_response.items]}")
+                logger.info(f"Namespace {self.namespace} is not ready yet. Waiting {str(time_passed)}/{str(timeout_seconds)} seconds ..")
+
+            except client.exceptions.ApiException as e:
+                logger.error(f"Error occurred while getting pods. {str(e)}")
+            
             time.sleep(1)
+
+        logger.error(f"Namespace {self.namespace} was not ready after {timeout_seconds} seconds.")
 
     def _get_pod_information(self, pod):
         logger.info("_getPodInformation ..")
@@ -121,11 +125,11 @@ class NodeManager:
         self._wait_until_ready(pod, timeout_seconds=7)
 
         try:
-            print(f"Retrieving logs for pod '{pod_name}' in namespace '{self.namespace}':")
+            logger.info(f"Retrieving logs for pod '{pod_name}' in namespace '{self.namespace}'..")
             logs = self.v1.read_namespaced_pod_log(name=pod_name, namespace=self.namespace)
             return(logs)
         except client.exceptions.ApiException as e:
-            print("Exception when calling CoreV1Api->read_namespaced_pod_log: %s\n" % e)
+            logger.error("Exception when calling CoreV1Api->read_namespaced_pod_log: %s\n" % e)
 
     def _is_broken(self, pod):
         pod_name = self._get_pod_name(pod)
@@ -133,21 +137,21 @@ class NodeManager:
             api_response = self.v1.read_namespaced_pod(name=pod_name, namespace=self.namespace)
             for container_status in api_response.status.container_statuses:
                 if container_status.state.waiting is not None:
-                    print(f"Container {container_status.name} status: {container_status.state.waiting.reason}")
+                    logger.info(f"Container {container_status.name} status: {container_status.state.waiting.reason}")
                     return True
                 elif container_status.state.running is not None:
-                    print(f"Container {container_status.name} is running")
+                    logger.info(f"Container {container_status.name} is running")
                     return False
                 elif container_status.state.terminated is not None:
-                    print(f"Container {container_status.name} terminated with reason: {container_status.state.terminated.reason}")
+                    logger.info(f"Container {container_status.name} terminated with reason: {container_status.state.terminated.reason}")
                     return True
         except client.exceptions.ApiException as e:
-            print("Exception when calling CoreV1Api->read_namespaced_pod: %s\n" % e)
+            logger.error("Exception when calling CoreV1Api->read_namespaced_pod: %s\n" % e)
             return True
 
     def _wait_until_ready(self, pod, timeout_seconds, time_passed=0):
         pod_name = self._get_pod_name(pod)
-        while not self._is_ready_kubectl(pod) and time_passed < timeout_seconds:
+        while not self.__is_ready(pod) and time_passed < timeout_seconds:
             logger.info(f"Pipeline {self.namespace} is not ready yet. Waiting for Pod {pod_name}. Waiting {time_passed}/{timeout_seconds} seconds ..")
             time.sleep(1)
             time_passed += 1
@@ -226,30 +230,23 @@ class NodeManager:
             return None
 
 
-    def _is_ready_kubectl(self, pod):
+    def __is_ready(self, pod):
         pod_name = self._get_pod_name(pod)
-        kubectl_command = ["kubectl", "-n", self.namespace, "get", "pod", pod_name]
 
         try:
-            process = subprocess.run(kubectl_command, check=True, stdout=subprocess.PIPE, universal_newlines=True)
-            pod_status = process.stdout
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Error occurred while getting pod status. {str(e)}")
+            api_response = self.v1.read_namespaced_pod(name=pod_name, namespace=self.namespace)
+            # return api_response.status.phase == 'Running'
+            if api_response.status.phase == 'Running':
+                for condition in api_response.status.conditions:
+                    if condition.type == "Ready":
+                        return condition.status == "True"
             return False
 
-        if "Running" in pod_status and any(x in pod_status for x in ["1/1", "2/2"]):
-            return True
-
-        logger.info(pod_status)
-        return False
+        except client.exceptions.ApiException as e:
+            print("Exception when calling CoreV1Api->read_namespaced_pod: %s\n" % e)
+            return None
 
     def __get_pods(self):
         self._pods = self.v1.list_namespaced_pod(namespace=self.namespace).items
         return self._pods
 
-    def __is_ready(self, pod):
-        try:
-            return "True" == pod.status.conditions[2].status
-        except Exception as e:
-            print(e)
-            return False
