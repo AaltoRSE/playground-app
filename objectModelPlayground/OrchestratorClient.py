@@ -17,12 +17,10 @@ from __future__ import print_function
 
 import grpc
 import logging
-import datetime
 import threading
 import traceback
 import sys
 
-from objectModelPlayground.Orchestrator import  Orchestrator
 
 import objectModelPlayground.orchestrator_pb2 as orchestrator_pb2
 import objectModelPlayground.orchestrator_pb2_grpc as orchestrator_pb2_grpc

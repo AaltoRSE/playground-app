@@ -20,12 +20,11 @@ from kubernetes import client
 
 from objectModelPlayground.K8sUtils import K8sClient
 
-logger = logging.getLogger("ObjectModelPlayground.NodeManager")
-
+logger = logging.getLogger(__name__)
 
 class NodeManager:
     def __init__(self, namespace):
-        logger.debug("Nodes class initialized")
+        logger.debug(f"{__name__} class initialized")
         self.namespace = namespace
 
     def get_pods_status(self):
@@ -97,9 +96,6 @@ class NodeManager:
         logger.error(f"Namespace {self.namespace} was not ready after {timeout_seconds} seconds.")
 
     def _get_pod_information(self, pod):
-        logger.info("_getPodInformation ..")
-
-        # podIP = pod.status.pod_ip
         try:
             self._check_namespace(pod)
             logs = self._get_logs(pod)
@@ -111,8 +107,7 @@ class NodeManager:
                     "Logs": logs, "Status": is_ready_container,
                     "Status-details": status_details}
         except Exception as e:
-            logger.info("Exception in _getPodInformation")
-            logger.info(e)
+            logger.error(e)
 
     def _get_logs(self, pod):
         pod_name = self._get_pod_name(pod)

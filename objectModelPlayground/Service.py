@@ -13,22 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============LICENSE_END==========================================================
-import pprint
 import logging
 
 from objectModelPlayground.K8sUtils import K8sClient
 
+logger = logging.getLogger(__name__)
 
 class Service:
     def __init__(self, namespace):
         self.namespace = namespace
-        self.logger = logging.getLogger("ObjectModelPlayground.Service")
-        self.logger.info("Service class initialized")
+        logger.debug(f"{__name__} class initialized")
 
-    def printServices(self):
-        # Configs can be set in Configuration class directly or using helper utility
-        services = self.getServices()
-        pprint.pprint(services)
     def getServices(self):
 
         self.logger.info("Service.getServices called")
@@ -37,7 +32,4 @@ class Service:
         services = []
         for i in ret.items:
             services.append({"name":i.metadata.name, "Type": i.spec.type, "Cluster IP" : i.spec.cluster_ip, "extIP " : "extIP not available yet", "port(s)" : "PORT(S)", "Age" : "AGE"})
-            # print(i.spec.type)
-
-        # Configs can be set in Configuration class directly or using helper utility
         return services

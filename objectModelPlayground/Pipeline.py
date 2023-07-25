@@ -20,6 +20,7 @@ import subprocess
 import glob
 import socket
 import yaml
+import logging
 from datetime import datetime
 from kubernetes import client
 
@@ -30,10 +31,10 @@ import objectModelPlayground.ObjectModelUtils as omUtils
 import objectModelPlayground.status_client as status_client
 from objectModelPlayground.K8sUtils import K8sClient
 
+logger = logging.getLogger(__name__)
 
 class Pipeline:
     def __init__(self, path_solutions, user_name, path_solution_zip=None, pipeline_id=None):
-        self.logger = logging.getLogger("ObjectModelPlayground.Pipeline")
 
         self.__path_solutions = path_solutions
         self.__user_name = user_name
@@ -45,12 +46,11 @@ class Pipeline:
                 self._create_pipeline()
         else:
             self.__namespace = pipeline_id.lower()
-        logger.info("Pipeline class initialized")
+        logger.debug(f"{__name__} class initialized")
 
     def is_namespace_existent(self):
         namespaces = K8sClient.get_core_v1_api().list_namespace().items
         namespaces = [ns.metadata.name for ns in namespaces]
-        self.logger.info(f"Existing namespaces: {namespaces}")
         return self.__get_namespace() in namespaces
 
     def is_healthy(self):
@@ -122,7 +122,7 @@ class Pipeline:
         self.__wait_until_ready(timeout_seconds)
 
         if(not self._is_running()):
-            self.logger.info("Init orchestrator_client.py ..")
+            logger.info("Init orchestrator_client.py ..")
             self._init_run()
         self._observe().join()
 
@@ -130,10 +130,10 @@ class Pipeline:
         orchestrator = Orchestrator(path_solution=self.__get_path_solution_user_pipeline())
         is_deployment_single_model = orchestrator.is_deployment_single_model()
         if is_deployment_single_model:
-            self.logger.info("Deployment is a single model")
+            logger.info("Deployment is a single model")
             return False
         else:
-            self.logger.info("Deployment is a pipeline")
+            logger.info("Deployment is a pipeline")
             return True
 
     def pull_and_rollout(self):
@@ -144,7 +144,7 @@ class Pipeline:
         self.__rollout_restart_deployments()
 
     def remove_pipeline(self):
-        self.logger.info(f"removePipeline(): {self.__get_namespace()}")
+        logger.info(f"removePipeline(): {self.__get_namespace()}")
         self.__delete_namespace()
         try:
             self.__remove_path_solution_user_pipeline()
@@ -157,7 +157,7 @@ class Pipeline:
         host_ip = self._get_node_manager().get_host_ip()
         port = self.get_orchestrator().get_container_port("orchestrator")
         endpoint = str(host_ip) + ":" + str(port)
-        self.logger.info(f"endpoint: {endpoint}")
+        logger.info(f"endpoint: {endpoint}")
         return status_client.is_running(endpoint=endpoint)
 
     def _get_node_manager(self):
@@ -168,24 +168,22 @@ class Pipeline:
             try:
                 port_web_ui = self._get_web_ui_port(pod=pod)
                 if port_web_ui is None:
-                    self.logger.info(f"No WebUI available for pod: {pod['Nodename']}")
+                    logger.info(f"WebUI for pod {pod['Nodename']} is: None")
                     pod["Web-UI"] = None
                 else:
                     pod["Web-UI"] = f"{pod.pop('hostIP')}:{port_web_ui}"
                     if(self._is_jupyter(pod["Nodename"])):
                         pod["Web-UI"] = pod["Web-UI"] + "/lab?token=" + self._get_token_jupyter()
-                    self.logger.info(f"WebUI for pod: {pod['Nodename']} is:")
-                    self.logger.info(pod["Web-UI"])
+                    logger.info(f"WebUI for pod {pod['Nodename']} is: {pod['Web-UI']}")
             except Exception as e:
                 print(e)
-                self.logger.info(f"No WebUI available for pod: {pod['Nodename']}")
+                logger.error(f"No WebUI available for pod: {pod['Nodename']}")
                 pod["Web-UI"] = None
         return pods_information
 
     def _get_web_ui_port(self, pod):
         container_name = pod["Nodename"]
         service_name = container_name+"webui"
-        self.logger.info(f"service_name = {service_name}")
 
         webui_port = self._get_node_port(service_name=service_name)
 
@@ -195,7 +193,7 @@ class Pipeline:
 
     def _get_node_port(self, service_name):
         try:
-            api_response = self.corev1api.read_namespaced_service(name=service_name, namespace=self.__get_namespace())
+            api_response = K8sClient.get_core_v1_api().read_namespaced_service(name=service_name, namespace=self.__get_namespace())
 
             for port in api_response.spec.ports:
                 if port.node_port is not None:
@@ -207,7 +205,6 @@ class Pipeline:
         test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             test_socket.connect((host_ip, webui_port))
-            # connection successful
             return True
         except Exception:
             return False
@@ -239,13 +236,13 @@ class Pipeline:
                 log_output.write(f"===============================================================================")
             self.__pull_images()
             self.__create_namespace()
-            self.logger.info("__runKubernetesClientScript()..")
+            logger.info("__runKubernetesClientScript()..")
             self.__run_kubernetes_client_script()
             self.__run_jupyter_deployment_script()
 
-            self.logger.info("__runKubernetesClientScript() done!")
+            logger.info("__runKubernetesClientScript() done!")
         except Exception as e:
-            self.logger.error("Error in _create_pipeline. Removing it now.")
+            logger.error("Error in _create_pipeline. Removing it now.")
             self.remove_pipeline()
             raise e
 
@@ -264,7 +261,7 @@ class Pipeline:
             log_output.write(f"{deployment_name} restarted")
 
     def __rollout_restart_deployments(self):
-        self.logger.info("__rolloutRestartDeployments()..")
+        logger.info("__rolloutRestartDeployments()..")
         deployments = K8sClient.get_apps_v1_api().list_namespaced_deployment(self.__get_namespace())
 
         for deployment in deployments.items:
@@ -274,14 +271,14 @@ class Pipeline:
 
 
     def _get_token_jupyter(self):
-        self.logger.info("_get_token_jupyter()")
+        logger.info("_get_token_jupyter()")
         self.__wait_until_ready()
         pod_name_jupyter = self._get_pod_name_jupyter()
 
         if pod_name_jupyter is None:
             return
         try:
-            self.logger.info("_get_token_jupyter(). Get Logs.. ")
+            logger.info("_get_token_jupyter(). Get Logs.. ")
             logs = self._get_node_manager().get_logs(pod_name_jupyter)
 
             logs = logs.split("\n")
@@ -302,7 +299,7 @@ class Pipeline:
 
     def _get_pod_name_jupyter(self):
         #ToDo Define final image name.
-        self.logger.debug("_get_pod_name_jupyter()")
+        logger.debug("_get_pod_name_jupyter()")
         JUPYTER_IMAGES = ["registry.gitlab.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-connect:latest", \
                           "hub.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-connect", "hub.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-connect:latest"]
 
@@ -312,19 +309,19 @@ class Pipeline:
         for image_name, container_name_yaml in zip(image_names, container_names_yaml):
             if image_name in JUPYTER_IMAGES:
                 container_name = container_name_yaml
-                self.logger.info(f"Jupyter Image = {image_name}")
+                logger.info(f"Jupyter Image = {image_name}")
                 break
         if container_name is None:
             return None
         pod_names = self._get_node_manager().get_pods_names()
         for pod_name in pod_names:
-            self.logger.info(f"name = {pod_name}")
+            logger.info(f"name = {pod_name}")
             if container_name in pod_name:
                 if(self._get_node_manager().is_pod_terminating(pod_name)):
                     continue
-                self.logger.info(f"pod_name = {pod_name} \n\n\n")
+                logger.info(f"pod_name = {pod_name} \n\n\n")
                 return pod_name
-        self.logger.error("error in Pipeline._get_pod_name_jupyter()!!")
+        logger.error("error in Pipeline._get_pod_name_jupyter()!!")
         return None
 
     def __get_image_container_names(self):
@@ -399,7 +396,7 @@ class Pipeline:
     def __pull_images(self):
         image_names = self.__get_image_names()
         for image_name in image_names:
-            self.logger.info(f"pulling image {image_name} ..")
+            logger.info(f"pulling image {image_name} ..")
             self.__docker_pull(image_name)
 
     def __docker_pull(self, image):
@@ -414,7 +411,7 @@ class Pipeline:
 
     # To get the pipeline name from blueprint.json, one first needs to extract the solution.zip to some intermediate folder and look into the blueprint there..
     def __create_namespace_name(self):
-        self.logger.info("Creating namespace name by temporarily extracting the solution.zip..")
+        logger.info("Creating namespace name by temporarily extracting the solution.zip..")
         path_solution_tmp = self.__get_path_solution_user()+"/tmp"
         self.__extract_solution_zip(path_solution_tmp)
 
@@ -422,7 +419,7 @@ class Pipeline:
             orchestrator = Orchestrator(path_solution_tmp)
             namespace_name = orchestrator.get_pipeline_name().lower() + "-" + omUtils.getUUID4()
             self.__remove_path_solution(path_solution_tmp)
-            self.logger.info("Creating namespace name done.")
+            logger.info("Creating namespace name done.")
             return namespace_name
         except Exception as e:
             self.__remove_path_solution(path_solution_tmp)
@@ -443,7 +440,7 @@ class Pipeline:
         try:
             omUtils.rmdir(path_solution)
         except OSError as e:
-            self.logger.error("Error: %s : %s" % (path_solution, e.strerror))
+            logger.error("Error: %s : %s" % (path_solution, e.strerror))
 
     def __extract_solution_zip(self, path_solution_extracted):
         if(".zip" not in self.__path_solution_zip):
@@ -455,9 +452,9 @@ class Pipeline:
         try:
             # Invoke the delete_namespace API.
             api_response = K8sClient.get_core_v1_api().delete_namespace(name=self.__get_namespace())
-            self.logger.info("Namespace deleted. status='%s'" % str(api_response.status))
+            logger.info("Namespace deleted. status='%s'" % str(api_response.status))
         except client.exceptions.ApiException as e:
-            self.logger.error("Exception when calling CoreV1Api->delete_namespace: %s\n" % e)
+            logger.error("Exception when calling CoreV1Api->delete_namespace: %s\n" % e)
 
     def __get_path_logs(self):
         return os.path.join(self.__get_path_solution_user_pipeline(), "logs.txt")
