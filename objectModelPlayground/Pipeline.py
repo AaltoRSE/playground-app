@@ -18,24 +18,23 @@ import shlex
 import zipfile
 import subprocess
 import glob
-import threading
-import json
 import socket
 import yaml
+import logging
 from datetime import datetime
+from kubernetes import client
 
 from objectModelPlayground.NodeManager import NodeManager
 from objectModelPlayground.Orchestrator import Orchestrator
 import objectModelPlayground.OrchestratorClient as OrchestratorClient
 import objectModelPlayground.ObjectModelUtils as omUtils
 import objectModelPlayground.status_client as status_client
-import logging
-logging.basicConfig(level=logging.INFO)
+from objectModelPlayground.K8sUtils import K8sClient
 
+logger = logging.getLogger(__name__)
 
 class Pipeline:
     def __init__(self, path_solutions, user_name, path_solution_zip=None, pipeline_id=None):
-        self.logger = logging.getLogger("ObjectModelPlayground.Pipeline")
 
         self.__path_solutions = path_solutions
         self.__user_name = user_name
@@ -47,12 +46,11 @@ class Pipeline:
                 self._create_pipeline()
         else:
             self.__namespace = pipeline_id.lower()
-        self.logger.info("Pipeline class initialized")
+        logger.debug(f"{__name__} class initialized")
 
     def is_namespace_existent(self):
-        cmd = f"kubectl get ns"
-        namespaces = self._runcmd(cmd)
-        self.logger.info(namespaces)
+        namespaces = K8sClient.get_core_v1_api().list_namespace().items
+        namespaces = [ns.metadata.name for ns in namespaces]
         return self.__get_namespace() in namespaces
 
     def is_healthy(self):
@@ -70,13 +68,17 @@ class Pipeline:
         if not self.__has_shared_folder():
             return None
         pvc = self._get_pvc()
-        cmd = f"kubectl get pv {pvc} -o json"
-
-        out = self._runcmd(cmd)
-        out_json = json.loads(out)
-        pvc_path = out_json["spec"]["hostPath"]["path"]
-
-        return pvc_path
+        print(pvc)
+        
+        # Get the corresponding PV for the PVC
+        pv = K8sClient.get_core_v1_api().read_persistent_volume(name=pvc)
+        # print(pv)
+        if pv.spec.host_path is not None:
+            pvc_path = pv.spec.host_path.path
+            print(f"Host path: {pvc_path}")
+            return pvc_path
+        print("Host path not available for this PV")
+        return None
 
     def get_pipeline_name(self):
         try:
@@ -120,7 +122,7 @@ class Pipeline:
         self.__wait_until_ready(timeout_seconds)
 
         if(not self._is_running()):
-            self.logger.info("Init orchestrator_client.py ..")
+            logger.info("Init orchestrator_client.py ..")
             self._init_run()
         self._observe().join()
 
@@ -128,32 +130,20 @@ class Pipeline:
         orchestrator = Orchestrator(path_solution=self.__get_path_solution_user_pipeline())
         is_deployment_single_model = orchestrator.is_deployment_single_model()
         if is_deployment_single_model:
-            self.logger.info("Deployment is a single model")
+            logger.info("Deployment is a single model")
             return False
         else:
-            self.logger.info("Deployment is a pipeline")
+            logger.info("Deployment is a pipeline")
             return True
 
     def pull_and_rollout(self):
-        with open(self.__get_path_logs(),"a") as log_output:
-            log_output.write("--------------------------------\n")
-            log_output.write("Logs pullAndRollout()\n")
+        self.__log_big_function(function="pullAndRollout")
         self.__pull_images()
         self.__rollout_restart_deployments()
 
-    # def restartDeployments(self):
-    #     with open(self.getPathLogs(),"a") as log_output:
-    #         log_output.write("--------------------------------\n")
-    #         log_output.write("Logs restartDeployments()\n")
-    #     self.__rolloutRestartDeployments()
-
-    # def restartDeployment(self, deployment_name):
-    #     self.__rolloutRestartDeployment(deployment_name)
-
     def remove_pipeline(self):
-        self.logger.info(f"removePipeline(): {self.__get_namespace()}")
-        pipeline_thread = threading.Thread(target=self.__delete_namespace, args=())
-        pipeline_thread.start()
+        logger.info(f"removePipeline(): {self.__get_namespace()}")
+        self.__delete_namespace()
         try:
             self.__remove_path_solution_user_pipeline()
         except Exception as e:
@@ -165,66 +155,62 @@ class Pipeline:
         host_ip = self._get_node_manager().get_host_ip()
         port = self.get_orchestrator().get_container_port("orchestrator")
         endpoint = str(host_ip) + ":" + str(port)
-        self.logger.info(f"endpoint: {endpoint}")
+        logger.info(f"endpoint: {endpoint}")
         return status_client.is_running(endpoint=endpoint)
 
     def _get_node_manager(self):
         return NodeManager(self.__get_namespace())
 
     def _update_pods_information(self, pods_information):
-        orchestrator = self.get_orchestrator()
-
         for pod in pods_information:
             try:
                 port_web_ui = self._get_web_ui_port(pod=pod)
                 if port_web_ui is None:
+                    logger.info(f"WebUI for pod {pod['Nodename']} is: None")
                     pod["Web-UI"] = None
                 else:
                     pod["Web-UI"] = f"{pod.pop('hostIP')}:{port_web_ui}"
                     if(self._is_jupyter(pod["Nodename"])):
                         pod["Web-UI"] = pod["Web-UI"] + "/lab?token=" + self._get_token_jupyter()
-                    self.logger.info(f"WebUI for pod: {pod['Nodename']} is:")
-                    self.logger.info(pod["Web-UI"])
+                    logger.info(f"WebUI for pod {pod['Nodename']} is: {pod['Web-UI']}")
             except Exception as e:
                 print(e)
-                self.logger.info(f"No WebUI available for pod: {pod['Nodename']}")
+                logger.error(f"No WebUI available for pod: {pod['Nodename']}")
                 pod["Web-UI"] = None
         return pods_information
 
     def _get_web_ui_port(self, pod):
         container_name = pod["Nodename"]
-        container_name_web_ui = container_name+"webui"
+        service_name = container_name+"webui"
 
-        cmd = f"kubectl -n {self.__get_namespace()} get svc"
-        out = self._runcmd(cmd)     
-        lines = out.split("\n")
-        for line in lines:
-            if container_name_web_ui in line:
-                index_tcp = line.rfind("TCP")
-                webui_port = int(line[index_tcp-6:index_tcp-1])
-        if webui_port is None:
-            raise Exception("webui_port == None")
-
-
-
+        webui_port = self._get_node_port(service_name=service_name)
 
         host_ip = pod["hostIP"]
+
+        return str(webui_port) if self.__test_socket(host_ip, webui_port) else None
+
+    def _get_node_port(self, service_name):
+        try:
+            api_response = K8sClient.get_core_v1_api().read_namespaced_service(name=service_name, namespace=self.__get_namespace())
+
+            for port in api_response.spec.ports:
+                if port.node_port is not None:
+                    return port.node_port
+        except client.exceptions.ApiException as e:
+            print("Exception when calling CoreV1Api->read_namespaced_service: %s\n" % e)
+
+    def __test_socket(self, host_ip, webui_port):
         test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             test_socket.connect((host_ip, webui_port))
-            # connection successful
-            return str(webui_port)
-        except Exception as e:
-            self.logger.debug(e)
-            self.logger.info(f"No WebUI available for pod: {pod['Nodename']}")
-            return None
+            return True
+        except Exception:
+            return False
 
     def _get_pvc(self):
-        cmd = f"kubectl -n {self.__get_namespace()} get pvc"
-        out = self._runcmd(cmd)     
-        if "No resources found" in out:
-            return False
-        return out.split()[10]
+        api_response = K8sClient.get_core_v1_api().list_namespaced_persistent_volume_claim(self.__get_namespace())
+        pvc = api_response.items[0]
+        return pvc.spec.volume_name
 
     def _get_endpoint_orchestrator(self):
         host_ip = self._get_node_manager().get_host_ip()
@@ -241,39 +227,49 @@ class Pipeline:
         try:
             self.__create_path_solution_directory()
             self.__extract_solution_zip(self.__get_path_solution_user_pipeline())
-            with open(self.__get_path_logs(),"a") as log_output:
-                function = "_createPipeline"
-                log_output.write(f"===============================================================================")
-                log_output.write(f"\n=================== Logs for {function}() {datetime.now()} ===================\n")
-                log_output.write(f"===============================================================================")
+            self.__log_big_function(function="_createPipeline")
             self.__pull_images()
             self.__create_namespace()
-            self.logger.info("__runKubernetesClientScript()..")
+            logger.info("__runKubernetesClientScript()..")
             self.__run_kubernetes_client_script()
             self.__run_jupyter_deployment_script()
 
-            self.logger.info("__runKubernetesClientScript() done!")
+            logger.info("__runKubernetesClientScript() done!")
         except Exception as e:
-            self.logger.error("Error in _create_pipeline. Removing it now.")
+            logger.error("Error in _create_pipeline. Removing it now.")
             self.remove_pipeline()
             raise e
 
+    def __rollout_restart_deployment(self, deployment_name):
+        api_response = K8sClient.get_apps_v1_api().read_namespaced_deployment(deployment_name, self.__get_namespace())
+
+        # Here we add an annotation to force kubernetes to rollout restart
+        if api_response.spec.template.metadata.annotations is None:
+            api_response.spec.template.metadata.annotations = {}
+        api_response.spec.template.metadata.annotations['kubectl.kubernetes.io/restartedAt'] = datetime.utcnow().isoformat()
+
+        K8sClient.get_apps_v1_api().patch_namespaced_deployment(deployment_name, self.__get_namespace(), api_response)
+        self.__log(message=f"{deployment_name} restarted", function="__rollout_restart_deployment")
+
     def __rollout_restart_deployments(self):
-        self.logger.info("__rolloutRestartDeployments()..")
-        cmd = f"kubectl -n {self.__get_namespace()} rollout restart deployment"
-        self.__run_and_log(cmd, "__rolloutRestartDeployments()")
+        logger.info("__rolloutRestartDeployments()..")
+        deployments = K8sClient.get_apps_v1_api().list_namespaced_deployment(self.__get_namespace())
+
+        for deployment in deployments.items:
+            self.__rollout_restart_deployment(deployment_name=deployment.metadata.name)
+
         self.__wait_until_ready(timeout_seconds=10)
 
 
     def _get_token_jupyter(self):
-        self.logger.info("_get_token_jupyter()")
+        logger.info("_get_token_jupyter()")
         self.__wait_until_ready()
         pod_name_jupyter = self._get_pod_name_jupyter()
 
         if pod_name_jupyter is None:
             return
         try:
-            self.logger.info("_get_token_jupyter(). Get Logs.. ")
+            logger.info("Get Logs of jupyter pod..")
             logs = self._get_node_manager().get_logs(pod_name_jupyter)
 
             logs = logs.split("\n")
@@ -294,7 +290,7 @@ class Pipeline:
 
     def _get_pod_name_jupyter(self):
         #ToDo Define final image name.
-        self.logger.info("_get_pod_name_jupyter()")
+        logger.debug("_get_pod_name_jupyter()")
         JUPYTER_IMAGES = ["registry.gitlab.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-connect:latest", \
                           "hub.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-connect", "hub.cc-asp.fraunhofer.de/recognaize-acumos/jupyter-connect:latest"]
 
@@ -304,19 +300,18 @@ class Pipeline:
         for image_name, container_name_yaml in zip(image_names, container_names_yaml):
             if image_name in JUPYTER_IMAGES:
                 container_name = container_name_yaml
-                self.logger.info(f"Jupyter Image = {image_name}")
+                logger.info(f"Jupyter Image = {image_name}")
                 break
         if container_name is None:
             return None
         pod_names = self._get_node_manager().get_pods_names()
         for pod_name in pod_names:
-            self.logger.info(f"name = {pod_name}")
+            logger.info(f"pod_name = {pod_name}")
             if container_name in pod_name:
-                if(self._get_node_manager().is_terminating(pod_name)):
+                if(self._get_node_manager().is_pod_terminating(pod_name)):
                     continue
-                self.logger.info(f"pod_name = {pod_name} \n\n\n")
                 return pod_name
-        self.logger.error("error in Pipeline._get_pod_name_jupyter()!!")
+        logger.error("error in Pipeline._get_pod_name_jupyter()!!")
         return None
 
     def __get_image_container_names(self):
@@ -346,12 +341,6 @@ class Pipeline:
     def _observe(self):
         return OrchestratorClient.observee(endpoint=self._get_endpoint_orchestrator())
 
-    # def __rolloutRestartDeployment(self, deployment_name):
-    #     self.logger.info("__rolloutDeployment() ..")
-    #     subprocess.run(
-    #         ["kubectl", "-n", self.__get_namespace(), "rollout", "restart", "deployment", deployment_name],
-    #         check=True)
-
     def __has_shared_folder(self):
         return self.get_orchestrator().has_shared_folder()
 
@@ -362,42 +351,29 @@ class Pipeline:
         script = os.path.join(base_path,"kubernetes-client-script.py")
         omUtils.makeFileExecutable(script)
 
-        with open(self.__get_path_logs(),"a") as log_output:
-            function = "__run_kubernetes_client_script"
-            log_output.write(f"\n=================== {function}() {datetime.now()} ===================\n")
 
         flags = " -n " + namespace + " -bp "+ base_path + " --image_pull_policy IfNotPresent "
         cmd = "python3 " + script + flags
-        with open(self.__get_path_logs(),"a") as log_output:
-            args = shlex.split(cmd)
-            subprocess.run(args, check=True, stdout=log_output)
+        self.__run_and_log(cmd=cmd,function="__run_kubernetes_client_script")
 
     def __run_jupyter_deployment_script(self):
         namespace = self.__get_namespace()
-        logging.info(f"namespace {namespace}")
         base_path = self.__get_path_solution_user_pipeline()
         script = os.path.join(base_path,"jupyter-deployment-script.py")
-        logging.info(f"namespace {namespace}")
         if(not os.path.exists(script)):
             return
 
         omUtils.makeFileExecutable(script)
 
-        with open(self.__get_path_logs(),"a") as log_output:
-            function = "__run_jupyter_deployment_script"
-            log_output.write(f"\n=================== {function}() {datetime.now()} ===================\n")
-
         flags = " -n " + namespace + " -bp "+ base_path + " "
         cmd = "python3 " + script + flags
         self.__wait_until_ready()
-        with open(self.__get_path_logs(),"a") as log_output:
-            args = shlex.split(cmd)
-            subprocess.run(args, check=True, stdout=log_output)
+        self.__run_and_log(cmd=cmd,function="__run_jupyter_deployment_script")
 
     def __pull_images(self):
         image_names = self.__get_image_names()
         for image_name in image_names:
-            self.logger.info(f"pulling image {image_name} ..")
+            logger.info(f"pulling image {image_name} ..")
             self.__docker_pull(image_name)
 
     def __docker_pull(self, image):
@@ -405,14 +381,18 @@ class Pipeline:
         self.__run_and_log(cmd, "__dockerPull")
 
     def __create_namespace(self):
-        subprocess.run(["kubectl", "create", "ns", self.__get_namespace()], check=True)
+        meta = client.models.v1_object_meta.V1ObjectMeta(name=self.__get_namespace())
+        body = client.V1Namespace(metadata=meta)
 
+        api_response = K8sClient.get_core_v1_api().create_namespace(body)
+        self.__log(message=f"Namespace created. status='{api_response.status}'", function="__create_namespace")
+    
     def __create_path_solution_directory(self):
         os.mkdir(self.__get_path_solution_user_pipeline())
 
     # To get the pipeline name from blueprint.json, one first needs to extract the solution.zip to some intermediate folder and look into the blueprint there..
     def __create_namespace_name(self):
-        self.logger.info("Creating namespace name by temporarily extracting the solution.zip..")
+        logger.info("Creating namespace name by temporarily extracting the solution.zip..")
         path_solution_tmp = self.__get_path_solution_user()+"/tmp"
         self.__extract_solution_zip(path_solution_tmp)
 
@@ -420,18 +400,28 @@ class Pipeline:
             orchestrator = Orchestrator(path_solution_tmp)
             namespace_name = orchestrator.get_pipeline_name().lower() + "-" + omUtils.getUUID4()
             self.__remove_path_solution(path_solution_tmp)
-            self.logger.info("Creating namespace name done.")
+            logger.info("Creating namespace name done.")
             return namespace_name
         except Exception as e:
             self.__remove_path_solution(path_solution_tmp)
             raise e
             
     def __run_and_log(self,cmd, function):
+        args = shlex.split(cmd)
+        message = subprocess.run(args, capture_output=True, text=True, check=True)
+        message = message.stdout
+        self.__log(message=message, function=function)
+
+    def __log(self,message, function):
         with open(self.__get_path_logs(),"a") as log_output:
             log_output.write(f"\n=================== {function}() {datetime.now()} ===================\n")
+            log_output.write(message)        
+
+    def __log_big_function(self, function):
         with open(self.__get_path_logs(),"a") as log_output:
-            args = shlex.split(cmd)
-            subprocess.run(args, check=True, stdout=log_output)
+            log_output.write(f"\n\n===============================================================================")
+            log_output.write(f"\n=================== Logs for {function}() {datetime.now()} ===================\n")
+            log_output.write(f"===============================================================================")
 
     def __remove_path_solution_user_pipeline(self):
         path_solution = self.__get_path_solution_user_pipeline()
@@ -441,7 +431,7 @@ class Pipeline:
         try:
             omUtils.rmdir(path_solution)
         except OSError as e:
-            self.logger.error("Error: %s : %s" % (path_solution, e.strerror))
+            logger.error("Error: %s : %s" % (path_solution, e.strerror))
 
     def __extract_solution_zip(self, path_solution_extracted):
         if(".zip" not in self.__path_solution_zip):
@@ -451,9 +441,11 @@ class Pipeline:
 
     def __delete_namespace(self):
         try:
-            subprocess.run(["kubectl", "delete", "ns", self.__get_namespace()], check=True)
-        except Exception as e:
-            self.logger.error(e)
+            # Invoke the delete_namespace API.
+            api_response = K8sClient.get_core_v1_api().delete_namespace(name=self.__get_namespace())
+            logger.info("Namespace deleted. status='%s'" % str(api_response.status))
+        except client.exceptions.ApiException as e:
+            logger.error("Exception when calling CoreV1Api->delete_namespace: %s\n" % e)
 
     def __get_path_logs(self):
         return os.path.join(self.__get_path_solution_user_pipeline(), "logs.txt")

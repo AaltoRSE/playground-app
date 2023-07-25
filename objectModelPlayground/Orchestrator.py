@@ -19,17 +19,12 @@ import os
 import yaml
 
 import objectModelPlayground.ObjectModelUtils as omUtils
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger("ObjectModelPlayground.Orchestrator")
-FORMAT = "[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s"
-logging.basicConfig(format=FORMAT)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 
 class Orchestrator:
     def __init__(self, path_solution):
-        logger.info(f"pathSolution = {path_solution}")
+        logger.debug(f"pathSolution = {path_solution}")
         self.path_solution = path_solution
         self.path_docker_info = path_solution + "/dockerinfo.json"
         self.path_blueprint = path_solution + "/blueprint.json"
@@ -37,6 +32,7 @@ class Orchestrator:
         self.path_solution_model_name = path_solution + "/modelname.txt"
         self.path_solution_icon = (path_solution + "/solution_icon.png").replace("//", "/")
         self.path_solution_description = (path_solution + "/solution_description.html").replace("//", "/")
+        logger.debug(f"{__name__} class initialized")
 
     def has_shared_folder(self):
         return "pvc.yaml" in os.listdir(self.deploymentsyamls)

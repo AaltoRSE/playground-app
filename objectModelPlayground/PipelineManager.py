@@ -21,14 +21,13 @@ from objectModelPlayground.Pipeline import Pipeline
 
 import objectModelPlayground.ObjectModelUtils as omUtils
 
+logger = logging.getLogger(__name__)
 
 class PipelineManager:
     def __init__(self, pathSolutions):
         self.pathSolutions = pathSolutions
         omUtils.mkdirRecursively(pathSolutions)
-        self.logger = logging.getLogger("ObjectModelPlayground.PipelineManager")
-        self.logger.info("PipelineManager class initialized")
-        # self.pipelines = {}
+        logger.debug(f"{__name__} class initialized")
 
     def is_healthy(self, username, pipeline_id):
         if pipeline_id is None:
@@ -101,7 +100,7 @@ class PipelineManager:
             pipeline = Pipeline(path_solutions=self.pathSolutions, pipeline_id=pipeline_id, user_name=user_name)
             pipeline.remove_pipeline()
         else:
-            self.logger.error("User %s does not have pipeline %s", user_name, pipeline_id)
+            logger.error("User %s does not have pipeline %s", user_name, pipeline_id)
             return
 
     def _get_pipeline_id(self, pipeline):
@@ -123,7 +122,7 @@ class PipelineManager:
             if os.path.exists(directory):
                 os.rmdir(directory)
         except OSError as e:
-            self.logger.error(e)
+            logger.error(e)
 
     def __is_pipeline_existent(self, user_name, pipeline_id):
         return pipeline_id in self.get_pipeline_ids(user_name)
