@@ -16,8 +16,9 @@
 import time
 import logging
 from datetime import datetime, timezone
-from kubernetes import client, config
+from kubernetes import client
 
+from objectModelPlayground.K8sUtils import K8sClient
 
 logger = logging.getLogger("ObjectModelPlayground.NodeManager")
 
@@ -26,8 +27,6 @@ class NodeManager:
     def __init__(self, namespace):
         logger.debug("Nodes class initialized")
         self.namespace = namespace
-        config.load_kube_config()
-        self.corev1api = client.CoreV1Api()
 
     def get_pods_status(self):
         # what about other states like: running, finished. we need thread-information here
@@ -82,7 +81,7 @@ class NodeManager:
     def wait_until_ready(self, timeout_seconds=120):
         for time_passed in range(timeout_seconds):
             try:
-                api_response = self.corev1api.list_namespaced_pod(self.namespace, field_selector='status.phase!=Running')
+                api_response = K8sClient.get_core_v1_api().list_namespaced_pod(self.namespace, field_selector='status.phase!=Running')
 
                 if len(api_response.items) == 0:
                     return
@@ -126,7 +125,7 @@ class NodeManager:
 
         try:
             logger.info(f"Retrieving logs for pod '{pod_name}' in namespace '{self.namespace}'..")
-            logs = self.corev1api.read_namespaced_pod_log(name=pod_name, namespace=self.namespace)
+            logs = K8sClient.get_core_v1_api().read_namespaced_pod_log(name=pod_name, namespace=self.namespace)
             return(logs)
         except client.exceptions.ApiException as e:
             logger.error("Exception when calling CoreV1Api->read_namespaced_pod_log: %s\n" % e)
@@ -134,7 +133,7 @@ class NodeManager:
     def _is_broken(self, pod):
         pod_name = self._get_pod_name(pod)
         try:
-            api_response = self.corev1api.read_namespaced_pod(name=pod_name, namespace=self.namespace)
+            api_response = K8sClient.get_core_v1_api().read_namespaced_pod(name=pod_name, namespace=self.namespace)
             for container_status in api_response.status.container_statuses:
                 if container_status.state.waiting is not None:
                     logger.info(f"Container {container_status.name} status: {container_status.state.waiting.reason}")
@@ -223,7 +222,7 @@ class NodeManager:
 
     def is_pod_terminating(self, pod_name):
         try:
-            api_response = self.corev1api.read_namespaced_pod(name=pod_name, namespace=self.namespace)
+            api_response = K8sClient.get_core_v1_api().read_namespaced_pod(name=pod_name, namespace=self.namespace)
             return api_response.metadata.deletion_timestamp is not None
         except client.exceptions.ApiException as e:
             print("Exception when calling CoreV1Api->read_namespaced_pod: %s\n" % e)
@@ -234,7 +233,7 @@ class NodeManager:
         pod_name = self._get_pod_name(pod)
 
         try:
-            api_response = self.corev1api.read_namespaced_pod(name=pod_name, namespace=self.namespace)
+            api_response = K8sClient.get_core_v1_api().read_namespaced_pod(name=pod_name, namespace=self.namespace)
             # return api_response.status.phase == 'Running'
             if api_response.status.phase == 'Running':
                 for condition in api_response.status.conditions:
@@ -247,6 +246,6 @@ class NodeManager:
             return None
 
     def __get_pods(self):
-        self._pods = self.corev1api.list_namespaced_pod(namespace=self.namespace).items
+        self._pods = K8sClient.get_core_v1_api().list_namespaced_pod(namespace=self.namespace).items
         return self._pods
 

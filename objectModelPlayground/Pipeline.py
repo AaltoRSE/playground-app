@@ -21,15 +21,14 @@ import glob
 import socket
 import yaml
 from datetime import datetime
-from kubernetes import client, config
+from kubernetes import client
 
 from objectModelPlayground.NodeManager import NodeManager
 from objectModelPlayground.Orchestrator import Orchestrator
 import objectModelPlayground.OrchestratorClient as OrchestratorClient
 import objectModelPlayground.ObjectModelUtils as omUtils
 import objectModelPlayground.status_client as status_client
-import logging
-logging.basicConfig(level=logging.INFO)
+from objectModelPlayground.K8sUtils import K8sClient
 
 
 class Pipeline:
@@ -46,13 +45,10 @@ class Pipeline:
                 self._create_pipeline()
         else:
             self.__namespace = pipeline_id.lower()
-        self.logger.info("Pipeline class initialized")
-        config.load_kube_config()
-        self.corev1api = client.CoreV1Api()
-        self.appsv1api = client.AppsV1Api()
+        logger.info("Pipeline class initialized")
 
     def is_namespace_existent(self):
-        namespaces = self.corev1api.list_namespace().items
+        namespaces = K8sClient.get_core_v1_api().list_namespace().items
         namespaces = [ns.metadata.name for ns in namespaces]
         self.logger.info(f"Existing namespaces: {namespaces}")
         return self.__get_namespace() in namespaces
@@ -75,7 +71,7 @@ class Pipeline:
         print(pvc)
         
         # Get the corresponding PV for the PVC
-        pv = self.corev1api.read_persistent_volume(name=pvc)
+        pv = K8sClient.get_core_v1_api().read_persistent_volume(name=pvc)
         # print(pv)
         if pv.spec.host_path is not None:
             pvc_path = pv.spec.host_path.path
@@ -217,7 +213,7 @@ class Pipeline:
             return False
 
     def _get_pvc(self):
-        api_response = self.corev1api.list_namespaced_persistent_volume_claim(self.__get_namespace())
+        api_response = K8sClient.get_core_v1_api().list_namespaced_persistent_volume_claim(self.__get_namespace())
         pvc = api_response.items[0]
         return pvc.spec.volume_name
 
@@ -254,14 +250,14 @@ class Pipeline:
             raise e
 
     def __rollout_restart_deployment(self, deployment_name):
-        api_response = self.appsv1api.read_namespaced_deployment(deployment_name, self.__get_namespace())
+        api_response = K8sClient.get_apps_v1_api().read_namespaced_deployment(deployment_name, self.__get_namespace())
 
         # Here we add an annotation to force kubernetes to rollout restart
         if api_response.spec.template.metadata.annotations is None:
             api_response.spec.template.metadata.annotations = {}
         api_response.spec.template.metadata.annotations['kubectl.kubernetes.io/restartedAt'] = datetime.utcnow().isoformat()
 
-        self.appsv1api.patch_namespaced_deployment(deployment_name, self.__get_namespace(), api_response)
+        K8sClient.get_apps_v1_api().patch_namespaced_deployment(deployment_name, self.__get_namespace(), api_response)
         with open(self.__get_path_logs(),"a") as log_output:
             function = "__rollout_restart_deployment"
             log_output.write(f"\n=================== {function}() {datetime.now()} ===================\n")
@@ -269,7 +265,7 @@ class Pipeline:
 
     def __rollout_restart_deployments(self):
         self.logger.info("__rolloutRestartDeployments()..")
-        deployments = self.appsv1api.list_namespaced_deployment(self.__get_namespace())
+        deployments = K8sClient.get_apps_v1_api().list_namespaced_deployment(self.__get_namespace())
 
         for deployment in deployments.items:
             self.__rollout_restart_deployment(deployment_name=deployment.metadata.name)
@@ -458,7 +454,7 @@ class Pipeline:
     def __delete_namespace(self):
         try:
             # Invoke the delete_namespace API.
-            api_response = self.corev1api.delete_namespace(name=self.__get_namespace())
+            api_response = K8sClient.get_core_v1_api().delete_namespace(name=self.__get_namespace())
             self.logger.info("Namespace deleted. status='%s'" % str(api_response.status))
         except client.exceptions.ApiException as e:
             self.logger.error("Exception when calling CoreV1Api->delete_namespace: %s\n" % e)

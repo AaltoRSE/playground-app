@@ -13,10 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============LICENSE_END==========================================================
-from kubernetes import client, config
 import pprint
 import logging
-logging.basicConfig(level=logging.INFO)
+
+from objectModelPlayground.K8sUtils import K8sClient
+
 
 class Service:
     def __init__(self, namespace):
@@ -29,11 +30,9 @@ class Service:
         services = self.getServices()
         pprint.pprint(services)
     def getServices(self):
-        config.load_kube_config()
 
-        corev1api = client.CoreV1Api()
         self.logger.info("Service.getServices called")
-        ret = corev1api.list_namespaced_service(namespace=self.namespace)
+        ret = K8sClient.get_core_v1_api().list_namespaced_service(namespace=self.namespace)
         self.logger.info("Desired Output: [\"NAME\",\"TYPE\",\"CLUSTER-IP\", \"EXTERNAL-IP\", \"PORT(S)\", \"AGE\"]")
         services = []
         for i in ret.items:
