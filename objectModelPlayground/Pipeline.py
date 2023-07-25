@@ -137,9 +137,7 @@ class Pipeline:
             return True
 
     def pull_and_rollout(self):
-        with open(self.__get_path_logs(),"a") as log_output:
-            log_output.write("--------------------------------\n")
-            log_output.write("Logs pullAndRollout()\n")
+        self.__log_big_function(function="pullAndRollout")
         self.__pull_images()
         self.__rollout_restart_deployments()
 
@@ -229,11 +227,7 @@ class Pipeline:
         try:
             self.__create_path_solution_directory()
             self.__extract_solution_zip(self.__get_path_solution_user_pipeline())
-            with open(self.__get_path_logs(),"a") as log_output:
-                function = "_createPipeline"
-                log_output.write(f"===============================================================================")
-                log_output.write(f"\n=================== Logs for {function}() {datetime.now()} ===================\n")
-                log_output.write(f"===============================================================================")
+            self.__log_big_function(function="_createPipeline")
             self.__pull_images()
             self.__create_namespace()
             logger.info("__runKubernetesClientScript()..")
@@ -255,10 +249,7 @@ class Pipeline:
         api_response.spec.template.metadata.annotations['kubectl.kubernetes.io/restartedAt'] = datetime.utcnow().isoformat()
 
         K8sClient.get_apps_v1_api().patch_namespaced_deployment(deployment_name, self.__get_namespace(), api_response)
-        with open(self.__get_path_logs(),"a") as log_output:
-            function = "__rollout_restart_deployment"
-            log_output.write(f"\n=================== {function}() {datetime.now()} ===================\n")
-            log_output.write(f"{deployment_name} restarted")
+        self.__log(message=f"{deployment_name} restarted", function="__rollout_restart_deployment")
 
     def __rollout_restart_deployments(self):
         logger.info("__rolloutRestartDeployments()..")
@@ -278,7 +269,7 @@ class Pipeline:
         if pod_name_jupyter is None:
             return
         try:
-            logger.info("_get_token_jupyter(). Get Logs.. ")
+            logger.info("Get Logs of jupyter pod..")
             logs = self._get_node_manager().get_logs(pod_name_jupyter)
 
             logs = logs.split("\n")
@@ -315,11 +306,10 @@ class Pipeline:
             return None
         pod_names = self._get_node_manager().get_pods_names()
         for pod_name in pod_names:
-            logger.info(f"name = {pod_name}")
+            logger.info(f"pod_name = {pod_name}")
             if container_name in pod_name:
                 if(self._get_node_manager().is_pod_terminating(pod_name)):
                     continue
-                logger.info(f"pod_name = {pod_name} \n\n\n")
                 return pod_name
         logger.error("error in Pipeline._get_pod_name_jupyter()!!")
         return None
@@ -361,37 +351,24 @@ class Pipeline:
         script = os.path.join(base_path,"kubernetes-client-script.py")
         omUtils.makeFileExecutable(script)
 
-        with open(self.__get_path_logs(),"a") as log_output:
-            function = "__run_kubernetes_client_script"
-            log_output.write(f"\n=================== {function}() {datetime.now()} ===================\n")
 
         flags = " -n " + namespace + " -bp "+ base_path + " --image_pull_policy IfNotPresent "
         cmd = "python3 " + script + flags
-        with open(self.__get_path_logs(),"a") as log_output:
-            args = shlex.split(cmd)
-            subprocess.run(args, check=True, stdout=log_output)
+        self.__run_and_log(cmd=cmd,function="__run_kubernetes_client_script")
 
     def __run_jupyter_deployment_script(self):
         namespace = self.__get_namespace()
-        logging.info(f"namespace {namespace}")
         base_path = self.__get_path_solution_user_pipeline()
         script = os.path.join(base_path,"jupyter-deployment-script.py")
-        logging.info(f"namespace {namespace}")
         if(not os.path.exists(script)):
             return
 
         omUtils.makeFileExecutable(script)
 
-        with open(self.__get_path_logs(),"a") as log_output:
-            function = "__run_jupyter_deployment_script"
-            log_output.write(f"\n=================== {function}() {datetime.now()} ===================\n")
-
         flags = " -n " + namespace + " -bp "+ base_path + " "
         cmd = "python3 " + script + flags
         self.__wait_until_ready()
-        with open(self.__get_path_logs(),"a") as log_output:
-            args = shlex.split(cmd)
-            subprocess.run(args, check=True, stdout=log_output)
+        self.__run_and_log(cmd=cmd,function="__run_jupyter_deployment_script")
 
     def __pull_images(self):
         image_names = self.__get_image_names()
@@ -426,11 +403,21 @@ class Pipeline:
             raise e
             
     def __run_and_log(self,cmd, function):
+        args = shlex.split(cmd)
+        message = subprocess.run(args, capture_output=True, text=True, check=True)
+        message = message.stdout
+        self.__log(message=message, function=function)
+
+    def __log(self,message, function):
         with open(self.__get_path_logs(),"a") as log_output:
             log_output.write(f"\n=================== {function}() {datetime.now()} ===================\n")
+            log_output.write(message)        
+
+    def __log_big_function(self, function):
         with open(self.__get_path_logs(),"a") as log_output:
-            args = shlex.split(cmd)
-            subprocess.run(args, check=True, stdout=log_output)
+            log_output.write(f"\n\n===============================================================================")
+            log_output.write(f"\n=================== Logs for {function}() {datetime.now()} ===================\n")
+            log_output.write(f"===============================================================================")
 
     def __remove_path_solution_user_pipeline(self):
         path_solution = self.__get_path_solution_user_pipeline()
