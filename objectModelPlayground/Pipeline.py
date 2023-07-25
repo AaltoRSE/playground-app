@@ -18,11 +18,10 @@ import shlex
 import zipfile
 import subprocess
 import glob
-import threading
-import json
 import socket
 import yaml
 from datetime import datetime
+from kubernetes import client, config
 
 from objectModelPlayground.NodeManager import NodeManager
 from objectModelPlayground.Orchestrator import Orchestrator
@@ -31,7 +30,6 @@ import objectModelPlayground.ObjectModelUtils as omUtils
 import objectModelPlayground.status_client as status_client
 import logging
 logging.basicConfig(level=logging.INFO)
-from kubernetes import client, config
 
 
 class Pipeline:
@@ -50,10 +48,11 @@ class Pipeline:
             self.__namespace = pipeline_id.lower()
         self.logger.info("Pipeline class initialized")
         config.load_kube_config()
-        self.v1 = client.CoreV1Api()
+        self.corev1api = client.CoreV1Api()
+        self.appsv1api = client.AppsV1Api()
 
     def is_namespace_existent(self):
-        namespaces = self.v1.list_namespace().items
+        namespaces = self.corev1api.list_namespace().items
         namespaces = [ns.metadata.name for ns in namespaces]
         self.logger.info(f"Existing namespaces: {namespaces}")
         return self.__get_namespace() in namespaces
@@ -76,7 +75,7 @@ class Pipeline:
         print(pvc)
         
         # Get the corresponding PV for the PVC
-        pv = self.v1.read_persistent_volume(name=pvc)
+        pv = self.corev1api.read_persistent_volume(name=pvc)
         # print(pv)
         if pv.spec.host_path is not None:
             pvc_path = pv.spec.host_path.path
@@ -200,7 +199,7 @@ class Pipeline:
 
     def _get_node_port(self, service_name):
         try:
-            api_response = self.v1.read_namespaced_service(name=service_name, namespace=self.__get_namespace())
+            api_response = self.corev1api.read_namespaced_service(name=service_name, namespace=self.__get_namespace())
 
             for port in api_response.spec.ports:
                 if port.node_port is not None:
@@ -218,7 +217,7 @@ class Pipeline:
             return False
 
     def _get_pvc(self):
-        api_response = self.v1.list_namespaced_persistent_volume_claim(self.__get_namespace())
+        api_response = self.corev1api.list_namespaced_persistent_volume_claim(self.__get_namespace())
         pvc = api_response.items[0]
         return pvc.spec.volume_name
 
@@ -254,10 +253,27 @@ class Pipeline:
             self.remove_pipeline()
             raise e
 
+    def __rollout_restart_deployment(self, deployment_name):
+        api_response = self.appsv1api.read_namespaced_deployment(deployment_name, self.__get_namespace())
+
+        # Here we add an annotation to force kubernetes to rollout restart
+        if api_response.spec.template.metadata.annotations is None:
+            api_response.spec.template.metadata.annotations = {}
+        api_response.spec.template.metadata.annotations['kubectl.kubernetes.io/restartedAt'] = datetime.utcnow().isoformat()
+
+        self.appsv1api.patch_namespaced_deployment(deployment_name, self.__get_namespace(), api_response)
+        with open(self.__get_path_logs(),"a") as log_output:
+            function = "__rollout_restart_deployment"
+            log_output.write(f"\n=================== {function}() {datetime.now()} ===================\n")
+            log_output.write(f"{deployment_name} restarted")
+
     def __rollout_restart_deployments(self):
         self.logger.info("__rolloutRestartDeployments()..")
-        cmd = f"kubectl -n {self.__get_namespace()} rollout restart deployment"
-        self.__run_and_log(cmd, "__rolloutRestartDeployments()")
+        deployments = self.appsv1api.list_namespaced_deployment(self.__get_namespace())
+
+        for deployment in deployments.items:
+            self.__rollout_restart_deployment(deployment_name=deployment.metadata.name)
+
         self.__wait_until_ready(timeout_seconds=10)
 
 
@@ -341,12 +357,6 @@ class Pipeline:
 
     def _observe(self):
         return OrchestratorClient.observee(endpoint=self._get_endpoint_orchestrator())
-
-    # def __rolloutRestartDeployment(self, deployment_name):
-    #     self.logger.info("__rolloutDeployment() ..")
-    #     subprocess.run(
-    #         ["kubectl", "-n", self.__get_namespace(), "rollout", "restart", "deployment", deployment_name],
-    #         check=True)
 
     def __has_shared_folder(self):
         return self.get_orchestrator().has_shared_folder()
@@ -448,7 +458,7 @@ class Pipeline:
     def __delete_namespace(self):
         try:
             # Invoke the delete_namespace API.
-            api_response = self.v1.delete_namespace(name=self.__get_namespace())
+            api_response = self.corev1api.delete_namespace(name=self.__get_namespace())
             self.logger.info("Namespace deleted. status='%s'" % str(api_response.status))
         except client.exceptions.ApiException as e:
             self.logger.error("Exception when calling CoreV1Api->delete_namespace: %s\n" % e)

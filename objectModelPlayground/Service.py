@@ -31,9 +31,9 @@ class Service:
     def getServices(self):
         config.load_kube_config()
 
-        v1 = client.CoreV1Api()
+        corev1api = client.CoreV1Api()
         self.logger.info("Service.getServices called")
-        ret = v1.list_namespaced_service(namespace=self.namespace)
+        ret = corev1api.list_namespaced_service(namespace=self.namespace)
         self.logger.info("Desired Output: [\"NAME\",\"TYPE\",\"CLUSTER-IP\", \"EXTERNAL-IP\", \"PORT(S)\", \"AGE\"]")
         services = []
         for i in ret.items:
