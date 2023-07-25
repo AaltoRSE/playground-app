@@ -381,8 +381,12 @@ class Pipeline:
         self.__run_and_log(cmd, "__dockerPull")
 
     def __create_namespace(self):
-        subprocess.run(["kubectl", "create", "ns", self.__get_namespace()], check=True)
+        meta = client.models.v1_object_meta.V1ObjectMeta(name=self.__get_namespace())
+        body = client.V1Namespace(metadata=meta)
 
+        api_response = K8sClient.get_core_v1_api().create_namespace(body)
+        self.__log(message=f"Namespace created. status='{api_response.status}'", function="__create_namespace")
+    
     def __create_path_solution_directory(self):
         os.mkdir(self.__get_path_solution_user_pipeline())
 
