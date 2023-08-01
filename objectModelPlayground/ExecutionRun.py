@@ -1,6 +1,8 @@
 import json
 import os
 import logging
+
+#from objectModelPlayground.ExecutionRunManager import ExecutionRunManager
 from ExecutionRunManager import ExecutionRunManager 
 
 logger = logging.getLogger(__name__)
@@ -40,13 +42,11 @@ class ExecutionRun:
          
          data["system_info"] = execution_manager.get_system_info()        # The 'system_info' key is created and the value is the returned output from get_system_info() in ExcutionRunManager
          json.dump(data, output_file, indent=4)
-         
-def main():
-   solution_path = os.path.join(os.path.expanduser("~"),"solution")  # the path is the home directory + solution folder
-   obj = ExecutionRun(solution_path)
+
 
 if __name__ == '__main__' :
-   main()
+   solution_path = os.path.join(os.path.expanduser("~"),"solution")  # the path is the home directory + solution folder
+   obj = ExecutionRun(solution_path)
 
 
 
