@@ -11,13 +11,11 @@ logger = logging.getLogger(__name__)
 ''' The class ExecutionRun is responsible for handling the blueprint.json and creation of execution-run.json inside the solution folder'''
 
 class ExecutionRun:
-   def __init__(self, path, namespace):
+   def __init__(self, path):
       self.path = path
-      self.namespace = namespace
       self.blueprint_path = path + "/blueprint.json" 
-      self.execution_path = path + "/execution_run.json"
+      self.execution_path = path + "/execution_run.json"   
       
-      self.create_json()
 
    def get_blueprint_json(self):          # The function reads the blueprint.json and get the data, node_list 
       if self.blueprint_path:
@@ -29,7 +27,7 @@ class ExecutionRun:
       else:
          logger.error('blueprint.json is not found')
 
-   def create_json(self):                 # The function creates a new execution-run.json, iterates over the data obtained from blueprnt.json
+   def create_json(self, namespace):                 # The function creates a new execution-run.json, iterates over the data obtained from blueprnt.json
       with open(self.execution_path,"w") as output_file:
          data, node_list = self.get_blueprint_json()
          execution_manager = ExecutionRunManager()
@@ -37,7 +35,7 @@ class ExecutionRun:
          for node_data in node_list:
             if "image" in node_data:        # If 'image' key is found in the nodelist, it passes the image as arg. to get_checksum() in ExecutionRunManger
                image = node_data["image"]
-               node_data["checksum"] = execution_manager.get_checksum(image= image, namespace= self.namespace)
+               node_data["checksum"] = execution_manager.get_checksum(image, namespace)
                logger.info(f'checksum for {image} is generated')
             else:
                logger.info('No image found')
