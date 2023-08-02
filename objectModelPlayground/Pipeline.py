@@ -30,6 +30,7 @@ import objectModelPlayground.OrchestratorClient as OrchestratorClient
 import objectModelPlayground.ObjectModelUtils as omUtils
 import objectModelPlayground.status_client as status_client
 from objectModelPlayground.K8sUtils import K8sClient
+from objectModelPlayground.ExecutionRun import ExecutionRun
 
 logger = logging.getLogger(__name__)
 
@@ -337,6 +338,7 @@ class Pipeline:
         # orchestrator = self.getOrchestrator()
         orchestrator = Orchestrator(path_solution)
         OrchestratorClient.init_run(orchestrator, endpoint=self._get_endpoint_orchestrator())
+        executionrun = ExecutionRun(path_solution, namespace=self.__get_namespace())
 
     def _observe(self):
         return OrchestratorClient.observee(endpoint=self._get_endpoint_orchestrator())
