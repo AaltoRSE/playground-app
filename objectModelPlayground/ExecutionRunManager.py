@@ -3,8 +3,8 @@ import logging
 import json
 from kubernetes import client
 
-#from objectModelPlayground.K8sUtils import K8sClient
-from K8sUtils import K8sClient
+from objectModelPlayground.K8sUtils import K8sClient
+#from K8sUtils import K8sClient
 
 logger = logging.getLogger(__name__)
 
@@ -33,14 +33,23 @@ class ExecutionRunManager:
     
         return system_info
 
-    def get_checksum(self,image):               # The function requests the checksum ( ImageID ) 
+    def get_checksum(self, image, namespace):               # The function requests the checksum ( ImageID ) 
       
-      pods = K8sClient.get_core_v1_api().list_pod_for_all_namespaces(watch=False)
-      for pod in pods.items:
-        for container in pod.spec.containers:
-            if image in container.image:           
-                checksum = pod.status.container_statuses[0].image_id
-                return checksum
+        try:
+
+            pods=K8sClient.get_core_v1_api().list_namespaced_pod(namespace)      
+            for pod in pods.items:
+                for container in pod.spec.containers:
+                    if image in container.image:           
+                        checksum = pod.status.container_statuses[0].image_id
+            
+            return checksum
+        
+        except:
+            logger.error('Error in getting checksum')
+            return None
+
+    
             
       
       
