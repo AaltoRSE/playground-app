@@ -338,7 +338,8 @@ class Pipeline:
         # orchestrator = self.getOrchestrator()
         orchestrator = Orchestrator(path_solution)
         OrchestratorClient.init_run(orchestrator, endpoint=self._get_endpoint_orchestrator())
-        executionrun = ExecutionRun(path_solution, namespace=self.__get_namespace())
+        executionrun = ExecutionRun(path_solution)
+        executionrun.create_json(namespace=self.__get_namespace())
 
     def _observe(self):
         return OrchestratorClient.observee(endpoint=self._get_endpoint_orchestrator())
