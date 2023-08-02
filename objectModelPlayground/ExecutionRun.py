@@ -2,17 +2,19 @@ import json
 import os
 import logging
 
-#from objectModelPlayground.ExecutionRunManager import ExecutionRunManager
-from ExecutionRunManager import ExecutionRunManager 
+from objectModelPlayground.ExecutionRunManager import ExecutionRunManager
+#from ExecutionRunManager import ExecutionRunManager 
+
 
 logger = logging.getLogger(__name__)
 
 ''' The class ExecutionRun is responsible for handling the blueprint.json and creation of execution-run.json inside the solution folder'''
 
 class ExecutionRun:
-   def __init__(self, path):
+   def __init__(self, path, namespace):
       self.path = path
-      self.blueprint_path = path + "/blueprint.json"
+      self.namespace = namespace
+      self.blueprint_path = path + "/blueprint.json" 
       self.execution_path = path + "/execution_run.json"
       
       self.create_json()
@@ -35,7 +37,7 @@ class ExecutionRun:
          for node_data in node_list:
             if "image" in node_data:        # If 'image' key is found in the nodelist, it passes the image as arg. to get_checksum() in ExecutionRunManger
                image = node_data["image"]
-               node_data["checksum"] = execution_manager.get_checksum(image)
+               node_data["checksum"] = execution_manager.get_checksum(image= image, namespace= self.namespace)
                logger.info(f'checksum for {image} is generated')
             else:
                logger.info('No image found')
@@ -44,9 +46,7 @@ class ExecutionRun:
          json.dump(data, output_file, indent=4)
 
 
-if __name__ == '__main__' :
-   solution_path = os.path.join(os.path.expanduser("~"),"solution")  # the path is the home directory + solution folder
-   obj = ExecutionRun(solution_path)
+
 
 
 
