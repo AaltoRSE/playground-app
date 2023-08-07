@@ -366,8 +366,11 @@ class Pipeline:
         script = os.path.join(base_path,"kubernetes-client-script.py")
         omUtils.makeFileExecutable(script)
 
+        flags_secret = self.__get_flags_kubernetes_pull_secret()
+        flags = f" -n {namespace} -bp {base_path} {flags_secret} "
+        if flags_secret=="":
+            flags += " --image_pull_policy IfNotPresent "
 
-        flags = f" -n {namespace} -bp {base_path} {self.__get_flags_kubernetes_pull_secret()} "
         cmd = "python3 " + script + flags
         self.__run_and_log(cmd=cmd,function="__run_kubernetes_client_script")
 
