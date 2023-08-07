@@ -35,11 +35,13 @@ from objectModelPlayground.ExecutionRun import ExecutionRun
 logger = logging.getLogger(__name__)
 
 class Pipeline:
-    def __init__(self, path_solutions, user_name, path_solution_zip=None, pipeline_id=None):
+    def __init__(self, path_solutions, user_name, path_solution_zip=None, pipeline_id=None, path_kubernetes_pull_secret=None, name_kubernetes_pull_secret=None):
 
         self.__path_solutions = path_solutions
         self.__user_name = user_name
         self.__path_solution_zip = path_solution_zip
+        self.__path_kubernetes_pull_secret = path_kubernetes_pull_secret
+        self.__name_kubernetes_pull_secret = name_kubernetes_pull_secret
 
         if pipeline_id is None:
             self.__namespace = self.__create_namespace_name()
@@ -347,6 +349,16 @@ class Pipeline:
     def __has_shared_folder(self):
         return self.get_orchestrator().has_shared_folder()
 
+    def __get_flags_kubernetes_pull_secret(self):
+        flags_secret = f" -sn {self.__name_kubernetes_pull_secret} -ps {self.__path_kubernetes_pull_secret} "
+        if self.__path_kubernetes_pull_secret is None:
+            logger.warning("path_secret is not set. Therefore no ImagePullSecrets can be used to pull images")
+            flags_secret = ""
+        if self.__name_kubernetes_pull_secret is None:
+            logger.warning("name_secret is not set. Therefore no ImagePullSecrets can be used to pull images")
+            flags_secret = ""
+        return flags_secret
+    
     def __run_kubernetes_client_script(self):
         namespace = self.__get_namespace()
 
@@ -355,7 +367,7 @@ class Pipeline:
         omUtils.makeFileExecutable(script)
 
 
-        flags = " -n " + namespace + " -bp "+ base_path + " --image_pull_policy IfNotPresent "
+        flags = f" -n {namespace} -bp {base_path} {self.__get_flags_kubernetes_pull_secret()} "
         cmd = "python3 " + script + flags
         self.__run_and_log(cmd=cmd,function="__run_kubernetes_client_script")
 

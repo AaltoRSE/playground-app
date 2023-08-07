@@ -255,7 +255,7 @@ def deploy_solution():
         username = hexlify(body['username'].lower().strip().encode()).decode('utf-8')
         logger.info(f"got solution and username: {username}")
         directory_solution_zip = decode_and_write_solution_zip(body['solution'], username)
-        pipeline_id = pm.create_pipeline(username, directory_solution_zip)
+        pipeline_id = pm.create_pipeline(username, directory_solution_zip, path_kubernetes_pull_secret=app.config['path_kubernetes_pull_secret'], name_kubernetes_pull_secret=app.config['name_kubernetes_pull_secret'])
         response = app.response_class(response=f'/dashboard?selected_deployment_id={pipeline_id}', status=200)
         return response
     except Exception as e:

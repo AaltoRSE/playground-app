@@ -6,5 +6,7 @@
     "https_key": "/etc/letsencrypt/live/your.domain/privkey.pem",
     "eu_login_local_url": "https://your.domain:6080/oauth/login",
     "eu_login_server_url": "https://ecas.acceptance.ec.europa.eu/cas",
-    "login_config": "dev-login"
+    "login_config": "dev-login",
+    "name_kubernetes_pull_secret":"acumos-registry",
+    "path_kubernetes_pull_secret":"~/.docker/config.json"
 }
