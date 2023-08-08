@@ -231,7 +231,6 @@ class Pipeline:
             self.__create_path_solution_directory()
             self.__extract_solution_zip(self.__get_path_solution_user_pipeline())
             self.__log_big_function(function="_createPipeline")
-            self.__pull_images()
             self.__create_namespace()
             logger.info("__runKubernetesClientScript()..")
             self.__run_kubernetes_client_script()
