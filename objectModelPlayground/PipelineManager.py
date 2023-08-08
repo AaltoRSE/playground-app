@@ -89,9 +89,9 @@ class PipelineManager:
         nodes = NodeManager(pipeline_id)
         return nodes
 
-    def create_pipeline(self, user_name, path_solution_zip):
+    def create_pipeline(self, user_name, path_solution_zip, path_kubernetes_pull_secret=None, name_kubernetes_pull_secret=None):
         self.__create_path_user(user_name)
-        pipeline = Pipeline(path_solutions=self.pathSolutions, user_name=user_name, path_solution_zip=path_solution_zip)
+        pipeline = Pipeline(path_solutions=self.pathSolutions, user_name=user_name, path_solution_zip=path_solution_zip, path_kubernetes_pull_secret=path_kubernetes_pull_secret, name_kubernetes_pull_secret=name_kubernetes_pull_secret)
 
         return pipeline.get_pipeline_id()
 

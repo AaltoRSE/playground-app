@@ -35,11 +35,13 @@ from objectModelPlayground.ExecutionRun import ExecutionRun
 logger = logging.getLogger(__name__)
 
 class Pipeline:
-    def __init__(self, path_solutions, user_name, path_solution_zip=None, pipeline_id=None):
+    def __init__(self, path_solutions, user_name, path_solution_zip=None, pipeline_id=None, path_kubernetes_pull_secret=None, name_kubernetes_pull_secret=None):
 
         self.__path_solutions = path_solutions
         self.__user_name = user_name
         self.__path_solution_zip = path_solution_zip
+        self.__path_kubernetes_pull_secret = path_kubernetes_pull_secret
+        self.__name_kubernetes_pull_secret = name_kubernetes_pull_secret
 
         if pipeline_id is None:
             self.__namespace = self.__create_namespace_name()
@@ -150,9 +152,8 @@ class Pipeline:
         except Exception as e:
             print(e)
 
-    def _is_running(self, timeout_seconds=100):
-        self.__wait_until_ready(timeout_seconds)
-
+    def _is_running(self):
+        
         host_ip = self._get_node_manager().get_host_ip()
         port = self.get_orchestrator().get_container_port("orchestrator")
         endpoint = str(host_ip) + ":" + str(port)
@@ -229,7 +230,6 @@ class Pipeline:
             self.__create_path_solution_directory()
             self.__extract_solution_zip(self.__get_path_solution_user_pipeline())
             self.__log_big_function(function="_createPipeline")
-            self.__pull_images()
             self.__create_namespace()
             logger.info("__runKubernetesClientScript()..")
             self.__run_kubernetes_client_script()
@@ -347,6 +347,16 @@ class Pipeline:
     def __has_shared_folder(self):
         return self.get_orchestrator().has_shared_folder()
 
+    def __get_flags_kubernetes_pull_secret(self):
+        flags_secret = f" -sn {self.__name_kubernetes_pull_secret} -ps {self.__path_kubernetes_pull_secret} "
+        if self.__path_kubernetes_pull_secret is None:
+            logger.warning("path_secret is not set. Therefore no ImagePullSecrets can be used to pull images")
+            flags_secret = ""
+        if self.__name_kubernetes_pull_secret is None:
+            logger.warning("name_secret is not set. Therefore no ImagePullSecrets can be used to pull images")
+            flags_secret = ""
+        return flags_secret
+    
     def __run_kubernetes_client_script(self):
         namespace = self.__get_namespace()
 
@@ -354,8 +364,11 @@ class Pipeline:
         script = os.path.join(base_path,"kubernetes-client-script.py")
         omUtils.makeFileExecutable(script)
 
+        flags_secret = self.__get_flags_kubernetes_pull_secret()
+        flags = f" -n {namespace} -bp {base_path} {flags_secret} "
+        if flags_secret=="":
+            flags += " --image_pull_policy IfNotPresent "
 
-        flags = " -n " + namespace + " -bp "+ base_path + " --image_pull_policy IfNotPresent "
         cmd = "python3 " + script + flags
         self.__run_and_log(cmd=cmd,function="__run_kubernetes_client_script")
 
