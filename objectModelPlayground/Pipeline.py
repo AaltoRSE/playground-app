@@ -152,9 +152,8 @@ class Pipeline:
         except Exception as e:
             print(e)
 
-    def _is_running(self, timeout_seconds=100):
-        self.__wait_until_ready(timeout_seconds)
-
+    def _is_running(self):
+        
         host_ip = self._get_node_manager().get_host_ip()
         port = self.get_orchestrator().get_container_port("orchestrator")
         endpoint = str(host_ip) + ":" + str(port)

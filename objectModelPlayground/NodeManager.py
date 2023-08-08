@@ -15,6 +15,8 @@
 # ===============LICENSE_END==========================================================
 import time
 import logging
+import threading
+
 from datetime import datetime, timezone
 from kubernetes import client
 
@@ -71,11 +73,25 @@ class NodeManager:
     def get_pods_information(self):
         logger.info("getPodsInformation ..")
         pods_information = []
+        lock = threading.Lock()
+        threads = []
         for pod in self.__get_pods():
-            if(self._is_pod_terminating(pod)):
-                continue
-            pods_information.append(self._get_pod_information(pod))
+            t = threading.Thread(target=self._get_pods_information_worker, args=(pod, pods_information, lock))
+            t.start()
+            threads.append(t)
+
+        for t in threads:
+            t.join()
+
+        pods_information = sorted(pods_information, key=lambda x: x["Nodename"])
         return pods_information
+
+    def _get_pods_information_worker(self, pod, pods_information, lock):
+        if self._is_pod_terminating(pod):
+            return
+        pod_info = self._get_pod_information(pod)
+        with lock:
+            pods_information.append(pod_info)
 
     def wait_until_ready(self, timeout_seconds=120):
         for time_passed in range(timeout_seconds):
@@ -113,7 +129,6 @@ class NodeManager:
         pod_name = self._get_pod_name(pod)
 
         if(self._is_broken(pod)):
-            logger.warning(f"Pod {pod_name} is broken.")
             return ""
 
         self._wait_until_ready(pod, timeout_seconds=7)
