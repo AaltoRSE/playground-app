@@ -115,7 +115,11 @@ class NodeManager:
         try:
             self._check_namespace(pod)
             logs = self._get_logs(pod)
-            container_name1 = self._get_container_names(pod)[0]
+            container_names=self._get_container_names(pod)
+            if container_names is None:
+                container_name1=None
+            else:
+                container_name1 = container_names[0]
             host_ip = self._get_host_ip(pod)
             is_ready_container = self.__is_ready(pod)
             status_details = self._get_status_details(pod)
@@ -123,22 +127,16 @@ class NodeManager:
                     "Logs": logs, "Status": is_ready_container,
                     "Status-details": status_details}
         except Exception as e:
-            logger.error(e)
+            logger.error(f"Getting pod information was not possible. Probably containers are not ready yet. Exception raised: {e}")
 
     def _get_logs(self, pod):
         pod_name = self._get_pod_name(pod)
-
-        if(self._is_broken(pod)):
-            return ""
-
-        self._wait_until_ready(pod, timeout_seconds=7)
-
         try:
             logger.info(f"Retrieving logs for pod '{pod_name}' in namespace '{self.namespace}'..")
             logs = K8sClient.get_core_v1_api().read_namespaced_pod_log(name=pod_name, namespace=self.namespace)
             return(logs)
         except client.exceptions.ApiException as e:
-            logger.error("Exception when calling CoreV1Api->read_namespaced_pod_log: %s\n" % e)
+            logger.warning(f"Reading logs for pod {pod_name} was not possible. Probably containers are not ready yet. Exception raised: {e}")
 
     def _is_broken(self, pod):
         pod_name = self._get_pod_name(pod)
@@ -159,46 +157,57 @@ class NodeManager:
             return True
 
     def _wait_until_ready(self, pod, timeout_seconds, time_passed=0):
-        pod_name = self._get_pod_name(pod)
-        while not self.__is_ready(pod) and time_passed < timeout_seconds:
-            logger.info(f"Pipeline {self.namespace} is not ready yet. Waiting for Pod {pod_name}. Waiting {time_passed}/{timeout_seconds} seconds ..")
-            time.sleep(1)
-            time_passed += 1
+        try:
+            pod_name = self._get_pod_name(pod)
+            while not self.__is_ready(pod) and time_passed < timeout_seconds:
+                logger.info(f"Pipeline {self.namespace} is not ready yet. Waiting for Pod {pod_name}. Waiting {time_passed}/{timeout_seconds} seconds ..")
+                time.sleep(1)
+                time_passed += 1
 
-        return time_passed
+            return time_passed
+        except Exception as e:
+            logger.error(e)
 
     def _get_host_ip(self, pod):
-        return pod.status.host_ip
+        try:
+            return pod.status.host_ip
+        except:
+            logger.warning("No host ip found for pod.")
+            return None
 
     def _get_status_details(self, pod):
-        pod_name = self._get_pod_name(pod)
-        pod_status = pod.status.phase
+        try:
+            pod_name = self._get_pod_name(pod)
+            pod_status = pod.status.phase
 
-        num_ready_containers = len([c for c in pod.status.container_statuses if c.ready])
-        num_total_containers = len(pod.spec.containers)
-        num_restarts = sum(c.restart_count for c in pod.status.container_statuses)
+            num_ready_containers = len([c for c in pod.status.container_statuses if c.ready])
+            num_total_containers = len(pod.spec.containers)
+            num_restarts = sum(c.restart_count for c in pod.status.container_statuses)
 
-        create_time = pod.metadata.creation_timestamp
-        age = str(datetime.now(timezone.utc) - create_time)
+            create_time = pod.metadata.creation_timestamp
+            age = str(datetime.now(timezone.utc) - create_time)
 
-        # Format the information.
-        short_status = {
-            'name': pod_name,
-            'ready': f'{num_ready_containers}/{num_total_containers}',
-            'status': pod_status,
-            'restarts': num_restarts,
-            'age': age
-        }
+            # Format the information.
+            short_status = {
+                'name': pod_name,
+                'ready': f'{num_ready_containers}/{num_total_containers}',
+                'status': pod_status,
+                'restarts': num_restarts,
+                'age': age
+            }
 
-        result = (
-            "-------------------------------------------------\n"
-            "Short Status: \n\n"
-            f"{short_status}\n\n"
-            "-------------------------------------------------\n"
-            "Extensive Status: \n\n"
-            f"{pod.status.container_statuses}"
-        )
-        return result
+            result = (
+                "-------------------------------------------------\n"
+                "Short Status: \n\n"
+                f"{short_status}\n\n"
+                "-------------------------------------------------\n"
+                "Extensive Status: \n\n"
+                f"{pod.status.container_statuses}"
+            )
+            return result
+        except Exception as e:
+            logger.warning(f"Getting Status Details was not possible. Probably containers are not ready yet. Exception raised: {e}")
+            return None
     
     def _get_pod_metadata(self, pod):
         return pod.metadata
