@@ -1,8 +1,11 @@
 import re
+import sys
 from kubernetes import client, config
 
+# to run, activate your virtualenv, cd to playground-app, then python -m scripts.cleaup_all_solutions
 
 from objectModelPlayground.PipelineManager import PipelineManager
+
 class NamespaceManager:
     def __init__(self):
         config.load_kube_config()
@@ -24,8 +27,12 @@ class NamespaceManager:
         print("Namespaces to be deleted:")
         print(namespace_names)
 
-        confirm = input("\nDo you really want to delete these namespaces? (yes/no): ")
-        if confirm.lower() == 'yes':
+        if len(sys.argv)>1 and sys.argv[1]=='-y':
+            assume_yes='yes'
+        else:
+            assume_yes = input("\nDo you really want to delete these namespaces? (yes/no): ")
+
+        if assume_yes == 'yes':
             for ns in namespace_names:
                 print(f"Deleting namespace {ns}.")
                 self.delete_namespace(ns)
