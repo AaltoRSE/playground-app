@@ -22,6 +22,7 @@ import socket
 import yaml
 import logging
 from datetime import datetime
+import json
 from kubernetes import client
 
 from objectModelPlayground.NodeManager import NodeManager
@@ -340,7 +341,44 @@ class Pipeline:
         OrchestratorClient.init_run(orchestrator, endpoint=self._get_endpoint_orchestrator())
         executionrun = ExecutionRun(path_solution)
         executionrun.create_json(namespace=self.__get_namespace())
+        self._get_starting_nodes(path_solution)
+        feature_dict, start_node = self._get_dataset_features()
+        executionrun.add_dataset_features(feature_dict, start_node)
 
+    def _get_starting_nodes(self, path):
+        ''''This function scans for the entry nodes with 'Empty' as the input message and returns a list of them.'''
+
+        self.blueprint_path = path + "/blueprint.json" 
+
+        with open(self.blueprint_path) as fp:
+            data = json.load(fp)['nodes']
+
+            # Extract a list of entry nodes from the blueprint data using the Empty input message.
+            self.entry_nodes = [
+                node.get("container_name")
+                for node in data
+                for signature in node.get('operation_signature_list', [])
+                if signature.get('operation_signature', {}).get('input_message_name') == "Empty"
+            ]
+
+        return self.entry_nodes
+    
+    def _get_dataset_features(self):
+        ''''This function checks if the list of starting nodes are available in the list of existing pods.'''
+
+        nd = NodeManager(namespace = self.__get_namespace())
+        self._pods = nd.get_pods_names()
+
+        feature_dict = {}
+
+        for start_node in self.entry_nodes:
+            matching_pod = [pod for pod in self._pods if start_node in pod]
+            if matching_pod:
+                feature_dict = nd._get_logs_starting_nodes(matching_pod[0])
+                break
+       
+        return feature_dict, start_node
+    
     def _observe(self):
         return OrchestratorClient.observee(endpoint=self._get_endpoint_orchestrator())
 
