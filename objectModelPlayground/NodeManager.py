@@ -16,7 +16,8 @@
 import time
 import logging
 import threading
-
+import json
+import re
 from datetime import datetime, timezone
 from kubernetes import client
 
@@ -138,6 +139,29 @@ class NodeManager:
         except client.exceptions.ApiException as e:
             logger.warning(f"Reading logs for pod {pod_name} was not possible. Probably containers are not ready yet. Exception raised: {e}")
 
+    def _get_logs_starting_nodes(self, matching_pod_name):
+        '''This function reads and finds the logs with the meta key {dataset_features} for the starting nodes'''
+        
+        try:
+            logger.info(f"Retrieving starting node logs for pod '{matching_pod_name}' in namespace '{self.namespace}'..")
+            log_entry = K8sClient.get_core_v1_api().read_namespaced_pod_log(name=matching_pod_name, namespace=self.namespace)
+    
+        except client.exceptions.ApiException as e:
+            logger.warning(f"Reading logs for pod {matching_pod_name} was not possible. Probably containers are not ready yet. Exception raised: {e}")
+
+        dict_pattern = r"INFO:root:\{('dataset_features': \{.*?\})\}"
+        match = re.search(dict_pattern, log_entry)
+        parsed_dict = {}
+
+        if match:
+            try:
+                dict_str = match.group(1).replace("'", '"')
+                parsed_dict = json.loads("{" + dict_str + "}")
+            except json.JSONDecodeError as e:
+                logger.warning(f"JSON decode error: {e}")
+
+        return parsed_dict
+    
     def _is_broken(self, pod):
         pod_name = self._get_pod_name(pod)
         try:
