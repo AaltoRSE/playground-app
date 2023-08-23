@@ -31,10 +31,11 @@ from views import *
 if __name__ == "__main__":
 
     app.secret_key = 'dev' if os.environ.get('SECRET_KEY') is None else os.environ['SECRET_KEY']
-
+    app.config["name_kubernetes_pull_secret"] = config.get("name_kubernetes_pull_secret")
+    app.config["path_kubernetes_pull_secret"] = config.get("path_kubernetes_pull_secret")
     bootstrap = Bootstrap4(app)
     logging.info("Starting UI")
     context = None
     if config.get("https_chain") and config.get("https_key"):
         context = (config.get("https_chain"), config.get("https_key"))
-    app.run(host=config.get("host"), port=config.get("port"), ssl_context=context)
+    app.run(debug= True, host=config.get("host"), port=config.get("port"), ssl_context=context)
