@@ -38,4 +38,4 @@ if __name__ == "__main__":
     context = None
     if config.get("https_chain") and config.get("https_key"):
         context = (config.get("https_chain"), config.get("https_key"))
-    app.run(host=config.get("host"), port=config.get("port"), ssl_context=context)
+    app.run(debug= True, host=config.get("host"), port=config.get("port"), ssl_context=context)
