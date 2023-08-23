@@ -134,9 +134,21 @@ def dashboard():
         session['refresh']=[24,12,6,3,3]
     if pipeline.get_status() == 'Ready':
         session['refresh']=[]
-    logger.info("rendering dashboard.html..")
-    return render_template("dashboard.html", pipeline=pipeline, user_folder=user_folder, deployment_list=deployment_list)
 
+    content_url = os.path.join(pathSolutions, session.get('username'), get_current_deployment_id(), 'solution_description.html')
+    image_url = os.path.join(pathSolutions, session.get('username'), get_current_deployment_id(), 'solution_icon.png')
+    heading = 'exist' if os.path.exists(content_url) or os.path.exists(image_url) else 'not_exist'
+
+    logger.info("rendering dashboard.html..")
+    return render_template("dashboard.html", pipeline=pipeline, user_folder=user_folder, deployment_list=deployment_list, image_url=image_url, content_url=content_url, heading=heading)
+
+@app.route('/<path:file_url>', methods=['GET'])
+def solution_description(file_url):
+    try:        
+        return send_file(file_url)
+       
+    except Exception as e:
+        return None  
 
 @app.route('/reset', methods=['GET'])
 @logged_in
