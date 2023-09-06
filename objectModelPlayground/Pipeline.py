@@ -342,16 +342,19 @@ class Pipeline:
         executionrun = ExecutionRun(path_solution)
         executionrun.create_json(namespace=self.__get_namespace())
         self._get_starting_nodes(path_solution)
-        feature_dict, start_node = self._get_dataset_features()
+        feature_dict, start_node = self._get_metadata()
         executionrun.add_dataset_features(feature_dict, start_node)
+      
+    def _get_starting_nodes(self, path_solution):
+        """
+        This function scans for the entry nodes with 'Empty' as the input message and returns a list.
+        For this purpose, we use the blueprint.json file that gives the pipeline's topology.
+        """
 
-    def _get_starting_nodes(self, path):
-        ''''This function scans for the entry nodes with 'Empty' as the input message and returns a list of them.'''
-
-        self.blueprint_path = path + "/blueprint.json" 
+        self.blueprint_path = path_solution + "/blueprint.json" 
 
         with open(self.blueprint_path) as fp:
-            data = json.load(fp)['nodes']
+            data = json.load(fp)['nodes'] # Load all the nodes in json file.
 
             # Extract a list of entry nodes from the blueprint data using the Empty input message.
             self.entry_nodes = [
@@ -361,22 +364,18 @@ class Pipeline:
                 if signature.get('operation_signature', {}).get('input_message_name') == "Empty"
             ]
 
+        logger.info(f"Nodes with 'Empty' as input message (Starting nodes)= {self.entry_nodes}")
+
         return self.entry_nodes
     
-    def _get_dataset_features(self):
-        ''''This function checks if the list of starting nodes are available in the list of existing pods.'''
-
+    def _get_metadata(self):
+        """
+        This function retrieves the metadata information, such as the dataset features and metrics
+        """
         nd = NodeManager(namespace = self.__get_namespace())
-        self._pods = nd.get_pods_names()
 
-        feature_dict = {}
-
-        for start_node in self.entry_nodes:
-            matching_pod = [pod for pod in self._pods if start_node in pod]
-            if matching_pod:
-                feature_dict = nd._get_logs_starting_nodes(matching_pod[0])
-                break
-       
+        feature_dict, start_node = nd._get_dataset_features(self.entry_nodes) # Retrieve the dataset features
+        
         return feature_dict, start_node
     
     def _observe(self):
