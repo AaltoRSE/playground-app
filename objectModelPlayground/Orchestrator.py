@@ -28,14 +28,30 @@ class Orchestrator:
         self.path_solution = path_solution
         self.path_docker_info = path_solution + "/dockerinfo.json"
         self.path_blueprint = path_solution + "/blueprint.json"
-        self.deploymentsyamls = path_solution + "/deployments"
+        self.path_deployment_yamls = path_solution + "/deployments"
         self.path_solution_model_name = path_solution + "/modelname.txt"
         self.path_solution_icon = (path_solution + "/solution_icon.png").replace("//", "/")
         self.path_solution_description = (path_solution + "/solution_description.html").replace("//", "/")
         logger.debug(f"{__name__} class initialized")
 
+    def get_pvc_yaml(self):
+        if self.has_shared_folder:
+            return os.path.join(self.path_deployment_yamls, "pvc.yaml")
+        logging.info("No pvc_yaml found")
+        return None
+
+    def get_pvc_name(self):
+        pvc_yaml = self.get_pvc_yaml()
+        try:
+            with open(pvc_yaml, 'r') as f:
+                yaml_content = yaml.safe_load(f)
+                pvc_name = yaml_content.get('metadata', {}).get('name')
+                return pvc_name
+        except:
+            return None
+
     def has_shared_folder(self):
-        return "pvc.yaml" in os.listdir(self.deploymentsyamls)
+        return "pvc.yaml" in os.listdir(self.path_deployment_yamls)
 
     def get_pipeline_name(self):
         blueprint_json = self.get_blueprint_json()

@@ -31,6 +31,7 @@ import objectModelPlayground.ObjectModelUtils as omUtils
 import objectModelPlayground.status_client as status_client
 from objectModelPlayground.K8sUtils import K8sClient
 from objectModelPlayground.ExecutionRun import ExecutionRun
+from objectModelPlayground.pvc_helper import PVC
 
 logger = logging.getLogger(__name__)
 
@@ -65,12 +66,12 @@ class Pipeline:
         if not self.__has_shared_folder():
             return None
 
-        return bool(self._get_pvc())
+        return bool(self._get_pvc_volume_name())
 
     def get_shared_folder_path(self):
         if not self.__has_shared_folder():
             return None
-        pvc = self._get_pvc()
+        pvc = self._get_pvc_volume_name()
         print(pvc)
         
         # Get the corresponding PV for the PVC
@@ -139,10 +140,18 @@ class Pipeline:
             logger.info("Deployment is a pipeline")
             return True
 
-    def pull_and_rollout(self):
-        self.__log_big_function(function="pullAndRollout")
-        self.__pull_images()
+
+    def reset_pipeline(self, reset_pvc=False):
+        logger.info("reset_pipeline started")
+        self.__log_big_function(function="reset_pipeline")
+        if reset_pvc:
+            self._reset_pvc()
         self.__rollout_restart_deployments()
+
+    def _reset_pvc(self):
+        logger.info("reset_pvc started")
+        PVC.delete_pvc_contents(namespace=self.__get_namespace(), pvc_name=self._get_pvc_name())
+
 
     def remove_pipeline(self):
         logger.info(f"removePipeline(): {self.__get_namespace()}")
@@ -209,7 +218,11 @@ class Pipeline:
         except Exception:
             return False
 
-    def _get_pvc(self):
+    def _get_pvc_name(self):
+        return self.get_orchestrator().get_pvc_name()
+
+
+    def _get_pvc_volume_name(self):
         api_response = K8sClient.get_core_v1_api().list_namespaced_persistent_volume_claim(self.__get_namespace())
         pvc = api_response.items[0]
         return pvc.spec.volume_name
@@ -425,7 +438,7 @@ class Pipeline:
     def __run_and_log(self,cmd, function):
         args = shlex.split(cmd)
         message = subprocess.run(args, capture_output=True, text=True, check=True)
-        message = message.stdout
+        message = message.stdout + "\n" + message.stderr
         self.__log(message=message, function=function)
 
     def __log(self,message, function):

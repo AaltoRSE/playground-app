@@ -144,7 +144,7 @@ def reset():
     logger.info("Reset Deployment..")
     if 'current_deployment_id' in session:
         pipeline = pm.get_pipeline(user_name=session.get('username'), pipeline_id=session.get('current_deployment_id'))
-        pipeline.pull_and_rollout()
+        pipeline.reset_pipeline(reset_pvc=False)
         session['refresh'] = [3,3]
         logger.info("Reset Deployment successful.")
 
