@@ -22,6 +22,7 @@ import socket
 import yaml
 import logging
 from datetime import datetime
+import json
 from kubernetes import client
 
 from objectModelPlayground.NodeManager import NodeManager
@@ -353,7 +354,45 @@ class Pipeline:
         OrchestratorClient.init_run(orchestrator, endpoint=self._get_endpoint_orchestrator())
         executionrun = ExecutionRun(path_solution)
         executionrun.create_json(namespace=self.__get_namespace())
+        self._get_starting_nodes(path_solution)
+        feature_dict, start_node, metrics_results = self._get_metadata()
+        executionrun.add_dataset_features(feature_dict, start_node)
+        executionrun.add_metrics_features(metrics_results)
+      
+    def _get_starting_nodes(self, path_solution):
+        """
+        This function scans for the entry nodes with 'Empty' as the input message and returns a list.
+        For this purpose, we use the blueprint.json file that gives the pipeline's topology.
+        """
 
+        self.blueprint_path = path_solution + "/blueprint.json" 
+
+        with open(self.blueprint_path) as fp:
+            data = json.load(fp)['nodes'] # Load all the nodes in json file.
+
+            # Extract a list of entry nodes from the blueprint data using the Empty input message.
+            self.entry_nodes = [
+                node.get("container_name")
+                for node in data
+                for signature in node.get('operation_signature_list', [])
+                if signature.get('operation_signature', {}).get('input_message_name') == "Empty"
+            ]
+
+        logger.info(f"Nodes with 'Empty' as input message (Starting nodes)= {self.entry_nodes}")
+
+        return self.entry_nodes
+    
+    def _get_metadata(self):
+        """
+        This function retrieves the metadata information, such as the dataset features and metrics
+        """
+        nd = NodeManager(namespace = self.__get_namespace())
+
+        feature_dict, start_node = nd._get_dataset_features(self.entry_nodes) # Retrieve the dataset features
+        metrics_results = nd._get_metrics_metadata() # Retrieve the metrics from different nodes
+
+        return feature_dict, start_node, metrics_results
+    
     def _observe(self):
         return OrchestratorClient.observee(endpoint=self._get_endpoint_orchestrator())
 

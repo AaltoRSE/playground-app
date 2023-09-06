@@ -2,7 +2,7 @@ import re
 import sys
 from kubernetes import client, config
 
-# to run, activate your virtualenv, cd to playground-app, then python -m scripts.cleaup_all_solutions
+# to run, activate your virtualenv, cd to playground-app, then python -m scripts.cleanup_all_solutions
 
 from objectModelPlayground.PipelineManager import PipelineManager
 

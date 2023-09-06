@@ -11426,3 +11426,9 @@ body.sidebar-toggled footer.sticky-footer {
 .h-screen {
   height: 100vh;
 }
+
+.version-info {
+  font-size: 10px;
+  text-align: right;
+  margin-right: 20px;
+}

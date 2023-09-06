@@ -16,7 +16,7 @@
 from functools import wraps
 from flask import render_template, redirect, send_file, abort
 from objectModelPlayground.PipelineManager import PipelineManager
-from binascii import hexlify
+import subprocess
 
 import os
 import base64
@@ -31,6 +31,8 @@ def logged_in(f):
         if 'username' in session:
             if 'refresh' not in session:
                 session['refresh'] = []
+            if 'version_info' not in session:
+                session['version_info'] = get_version_info()
             return f(*args, **kwargs)
         else:
             return render_login()
@@ -51,9 +53,16 @@ pathSolutionZips = "solutionZips/"
 pathSolutions = "solutions/"
 pm = PipelineManager(pathSolutions)
 
-
 def get_base_dir(user, deployment):
     return os.path.join(os.getcwd(), "solutions", user, deployment)
+
+def get_version_info():
+    logger.info('enter get_version_info()')
+    try:
+        return str(subprocess.run(['git', 'describe', '--tags'], capture_output=True).stdout, 'utf-8')
+    except Exception as e:
+        print(e)
+        return 'version not available'
 
 def get_current_deployment_id():
     user = session.get('username')
@@ -98,15 +107,13 @@ def handle_error(e):
 
 
 @app.route('/', methods=["GET"])
+@logged_in
 def home():
     logger.info("enter home()")
     if request.method == "GET":
-        if "username" not in session:
-            return render_login()
-        else:
-            pipelines = pm.get_pipeline_ids(session.get('username'))
-            if len(pipelines) > 0:
-                return redirect('/dashboard')
+        pipelines = pm.get_pipeline_ids(session.get('username'))
+        if len(pipelines) > 0:
+            return redirect('/dashboard')
 
     return render_template('index.html')
 
@@ -134,9 +141,32 @@ def dashboard():
         session['refresh']=[24,12,6,3,3]
     if pipeline.get_status() == 'Ready':
         session['refresh']=[]
-    logger.info("rendering dashboard.html..")
-    return render_template("dashboard.html", pipeline=pipeline, user_folder=user_folder, deployment_list=deployment_list)
 
+    content_url = os.path.join(pathSolutions, session.get('username'), get_current_deployment_id(), 'solution_description.html')
+    image_url = os.path.join(pathSolutions, session.get('username'), get_current_deployment_id(), 'solution_icon.png')
+    heading = 'exist' if os.path.exists(content_url) or os.path.exists(image_url) else 'not_exist'
+
+    logger.info("rendering dashboard.html..")
+    return render_template("dashboard.html", pipeline=pipeline, user_folder=user_folder, deployment_list=deployment_list, image_url=image_url, content_url=content_url, heading=heading)
+
+@app.route('/<path:file_url>', methods=['GET'])
+@logged_in
+def solution_description(file_url):
+    try:
+        # check only for last url segment
+        last=file_url.split('/')[-1]
+        if last=='solution_description.html' or last=='solution_icon.png':
+            # we construct the path ourselves to prevent malicious path acrobatics
+            return send_file(os.path.join(pathSolutions, session.get('username'), get_current_deployment_id(), last))
+
+    except Exception as e:
+        pass
+
+    response = app.response_class(
+        response=f"file not found {file_url}",
+        status=404
+    )
+    return response
 
 @app.route('/reset', methods=['GET'])
 @logged_in

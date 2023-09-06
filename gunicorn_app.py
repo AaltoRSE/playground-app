@@ -29,6 +29,8 @@ app = Flask(__name__)
 os.environ['LOGIN_CONFIG'] = "dev-login" if config.get("login_config") is None else config.get("login_config")
 from views import *
 app.secret_key = 'dev' if os.environ.get('SECRET_KEY') is None else os.environ['SECRET_KEY']
+app.config["name_kubernetes_pull_secret"] = config.get("name_kubernetes_pull_secret")
+app.config["path_kubernetes_pull_secret"] = config.get("path_kubernetes_pull_secret")
 bootstrap = Bootstrap4(app)
 logging.info("Starting UI")
 
