@@ -176,6 +176,53 @@ class NodeManager:
         
         return feature_dict, start_node
     
+    def _get_metrics_metadata(self):
+        """
+        This function checks for the nodes containing the metrics. 
+        Further, it finds the logs with the meta key {metrics} from the such nodes and returns the metrics dictionary.
+        """
+
+        metrics_nodes = []
+        metrics_results = {}
+
+        self.wait_until_ready()
+        for pod in self.__get_pods():
+            pod_name = self._get_pod_name(pod)
+            logger.info(f"pod_name = {pod_name}")
+
+            if(self._is_pod_terminating(pod)):
+                continue
+            logger.info(f"pod Name = {pod_name}")
+
+            initial_log_entry = self._get_logs(pod) # Read the logs for all the existing pods in the pipeline
+
+            initial_dict_pattern = r"INFO:root:MetricsAvailable" # Log entry to scan the nodes with metrics
+            if re.search(initial_dict_pattern, initial_log_entry):
+                metrics_nodes.append(pod)
+
+      
+        logger.info(f"Nodes containing metrics= {', '.join(node.metadata.name for node in metrics_nodes)}")
+
+        # Iterate through nodes containing metrics and gather their data into a dictionary
+        for node in metrics_nodes:
+            log_entry = self._get_logs(node)
+
+            dict_pattern = r"INFO:root:\{('metrics': \{.*?\})\}"
+            match = re.search(dict_pattern, log_entry) # Check if the match is found
+            
+            metrics_dict = {}
+
+            if match:
+                try:
+                    dict_str = match.group(1).replace("'", '"')
+                    metrics_dict = json.loads("{" + dict_str + "}")
+                except json.JSONDecodeError as e:
+                    logger.warning(f"JSON decode error: {e}")
+            
+            metrics_results[node.metadata.name] = metrics_dict # Gather the data into this dictionary
+
+        return metrics_results
+    
     def _is_broken(self, pod):
         pod_name = self._get_pod_name(pod)
         try:

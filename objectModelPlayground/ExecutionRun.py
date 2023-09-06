@@ -44,7 +44,10 @@ class ExecutionRun:
          json.dump(data, output_file, indent=4)
 
    def add_dataset_features(self, feature_dict, start_node):
-      '''This function adds the dictionary obtained from the Pipeline.py to the execution-run.json.'''
+      """
+      This function adds the dictionary containing dataset features obtained after running 
+      the pipeline to the execution-run.json.
+      """
       
       with open(self.execution_path, 'r') as fp:
             data = json.load(fp)
@@ -57,6 +60,25 @@ class ExecutionRun:
       with open(self.execution_path, 'w') as fp:
          json.dump(data, fp, indent=4)
 
+   def add_metrics_features(self, metrics_results):
+      """
+      This function adds the dictionary containing metrics from various nodes obtained after running 
+      the pipeline to the execution-run.json.
+      """
+      
+      with open(self.execution_path, 'r') as fp:
+            data = json.load(fp)
+
+      for key, value in metrics_results.items():
+         for node in data['nodes']:
+               print(node.get("container_name"))
+               if node.get("container_name") in key:
+                  node.update(value)
+                  break  # Stop after updating the desired node
+
+      with open(self.execution_path, 'w') as fp:
+         json.dump(data, fp, indent=4)
+      
 
 
 

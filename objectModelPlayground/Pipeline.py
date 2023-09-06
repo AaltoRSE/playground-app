@@ -342,8 +342,9 @@ class Pipeline:
         executionrun = ExecutionRun(path_solution)
         executionrun.create_json(namespace=self.__get_namespace())
         self._get_starting_nodes(path_solution)
-        feature_dict, start_node = self._get_metadata()
+        feature_dict, start_node, metrics_results = self._get_metadata()
         executionrun.add_dataset_features(feature_dict, start_node)
+        executionrun.add_metrics_features(metrics_results)
       
     def _get_starting_nodes(self, path_solution):
         """
@@ -375,8 +376,9 @@ class Pipeline:
         nd = NodeManager(namespace = self.__get_namespace())
 
         feature_dict, start_node = nd._get_dataset_features(self.entry_nodes) # Retrieve the dataset features
-        
-        return feature_dict, start_node
+        metrics_results = nd._get_metrics_metadata() # Retrieve the metrics from different nodes
+
+        return feature_dict, start_node, metrics_results
     
     def _observe(self):
         return OrchestratorClient.observee(endpoint=self._get_endpoint_orchestrator())
