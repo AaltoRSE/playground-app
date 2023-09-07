@@ -150,9 +150,17 @@ class Pipeline:
         self.__rollout_restart_deployments()
 
     def _reset_pvc(self):
-        logger.info("reset_pvc started")
-        PVC.delete_pvc_contents(namespace=self.__get_namespace(), pvc_name=self._get_pvc_name())
-
+        try:
+            pvc_name = self._get_pvc_name()
+            if not pvc_name:
+                raise ValueError("PVC name is not available.")
+            namespace = self.__get_namespace()
+            
+            PVC.delete_pvc_contents(namespace=namespace, pvc_name=pvc_name)
+        except ValueError as e:
+            logger.warning(str(e))
+        except Exception as e:
+            logger.error(f"An unexpected error occurred: {e}")
 
     def remove_pipeline(self):
         logger.info(f"removePipeline(): {self.__get_namespace()}")
