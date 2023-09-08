@@ -168,15 +168,29 @@ def solution_description(file_url):
     )
     return response
 
-@app.route('/reset', methods=['GET'])
+@app.route('/reset', methods=['GET','POST'])
 @logged_in
 def reset():
     logger.info("Reset Deployment..")
-    if 'current_deployment_id' in session:
-        pipeline = pm.get_pipeline(user_name=session.get('username'), pipeline_id=session.get('current_deployment_id'))
-        pipeline.reset_pipeline(reset_pvc=False)
-        session['refresh'] = [3,3]
-        logger.info("Reset Deployment successful.")
+    # Check if the HTTP request method is 'POST', indicating a form submission
+    if request.method == 'POST':
+        checkbox1 = request.form.get('checkbox1')
+        action = request.form.get('action')
+
+        # Determine whether to reset PVC based on the 'checkbox1' value
+        reset_value = checkbox1 == 'on'             
+        logger.info("Reset PVC" if reset_value else "No PVC reset")
+
+        # Check the value of the 'action' parameter and perform corresponding actions
+        if action == 'Submit':
+            if 'current_deployment_id' in session:
+                pipeline = pm.get_pipeline(user_name=session.get('username'), pipeline_id=session.get('current_deployment_id'))
+                pipeline.reset_pipeline(reset_pvc=reset_value)
+                session['refresh'] = [3,3]
+                logger.info("Reset Deployment successful.")
+
+        elif action == 'Cancel':
+            logger.info("Reset Deployment Cancelled")
 
     return redirect('/dashboard')
 
