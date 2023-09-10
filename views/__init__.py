@@ -155,7 +155,7 @@ def solution_description(file_url):
     try:
         # check only for last url segment
         last=file_url.split('/')[-1]
-        if last=='solution_description.html' or last=='solution_icon.png':
+        if last in ['solution_description.html', 'solution_icon.png', 'execution_run.json']:
             # we construct the path ourselves to prevent malicious path acrobatics
             return send_file(os.path.join(pathSolutions, session.get('username'), get_current_deployment_id(), last))
 

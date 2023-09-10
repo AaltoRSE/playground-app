@@ -148,6 +148,11 @@ class Pipeline:
         if reset_pvc:
             self._reset_pvc()
         self.__rollout_restart_deployments()
+        os.remove(os.path.join(self.__get_path_solution_user_pipeline(), 'execution_run.json'))
+
+
+    def has_execution_run_file(self):
+        return os.path.exists(os.path.join(self.__get_path_solution_user_pipeline(), 'execution_run.json'))
 
     def _reset_pvc(self):
         try:

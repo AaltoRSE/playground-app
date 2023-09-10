@@ -143,6 +143,10 @@
                   class="fas fa-minus-circle"></i></span>Delete</button></a>
           <a href="/logs" target="_blank"><button type="button" class="btn btn-labeled btn-info"><span
                 class="btn-label"><i class="fas fa-sign-out-alt"></i></span>Logs</button></a>
+          {% if pipeline.has_execution_run_file() %}
+          <a href="/execution_run.json" target="_blank"><button type="button" class="btn btn-labeled btn-info"><span
+                class="btn-label"><i class="fas fa-sign-out-alt"></i></span>View Execution Metadata</button></a>
+          {% endif %}
           <table id='result' align="center">
             <thead>
               <tr>
