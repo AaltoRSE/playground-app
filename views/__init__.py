@@ -137,9 +137,10 @@ def dashboard():
     # setup page variables
     pipeline = pm.get_pipeline(user_name=user, pipeline_id=current_deployment_id)
     user_folder = os.path.join(user, current_deployment_id)
-    if pipeline.get_status() == "Not Ready" and len(session['refresh'])<1:
+    status = pipeline.get_status()
+    if status == "Not Ready" and len(session['refresh'])<1:
         session['refresh']=[24,12,6,3,3]
-    if pipeline.get_status() == 'Ready':
+    if status == 'Ready':
         session['refresh']=[]
 
     content_url = os.path.join(pathSolutions, session.get('username'), get_current_deployment_id(), 'solution_description.html')
