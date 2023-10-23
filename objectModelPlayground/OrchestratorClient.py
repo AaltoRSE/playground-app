@@ -15,16 +15,13 @@
 # ===============LICENSE_END==========================================================
 from __future__ import print_function
 
-import grpc
 import logging
 import threading
-import traceback
-import sys
-
-
+import grpc
 import objectModelPlayground.orchestrator_pb2 as orchestrator_pb2
 import objectModelPlayground.orchestrator_pb2_grpc as orchestrator_pb2_grpc
 
+from typing import Dict, Any
 
 
 
@@ -36,6 +33,9 @@ observer_componentfilter = '.*'
 
 
 class OrchestrationObserver(threading.Thread):
+    """
+    Observer class that connects to a gRPC server to observe events.
+    """
     def __init__(self, endpoint: str, message_display: bool, server_configuration: orchestrator_pb2.OrchestrationObservationConfiguration):
         super().__init__(daemon=False)
         self.endpoint = endpoint
@@ -43,66 +43,39 @@ class OrchestrationObserver(threading.Thread):
         assert isinstance(server_configuration, orchestrator_pb2.OrchestrationObservationConfiguration)
         self.server_configuration = server_configuration
 
-    def run(self):
+    def run(self) -> None:
+        """Thread's run method."""
         try:
-            print("observing")
+            logging.info("observing")
             channel = grpc.insecure_channel(self.endpoint)
             stub = orchestrator_pb2_grpc.OrchestratorStub(channel)
-            for event in stub.observe(self.server_configuration):
-
-                # omit event.run because we do not use it yet
-                if event.name == 'exception':
-
-                    # display exceptions in a special way
-                    print("%s produced exception in method %s with traceback\n%s" % (
-                        event.component, event.detail['method'], event.detail['traceback']))
-
-                else:
-
-                    if self.message_display:
-                        display_detail = event.detail
-                    else:
-                        display_detail = {
-                            k: v
-                            for k, v in event.detail.items()
-                            if k not in 'message'
-                        }
-
-                    # generic display
-                    detailstr = ''
-                    if len(display_detail) > 0:
-                        detailstr = ' with details ' + ' '.join(
-                            [f"{k}={repr(v)}" for k, v in display_detail.items()]
-                        )
-                    print("%s produced event '%s'%s" % (event.component, event.name, detailstr)) # ToDo: save/observe these for issue #53 to see whether pipeline is running
-                    # if event.name == RPC.finished..
-
-                    ### Microservices
-                    # print(message)
-                    # if "[svc=OCR,rpc=ocr] produced event 'thread.terminate'" in message:
-                    #     print("Pipeline finished. Terminating now.")
-                    #     raise KeyboardInterrupt'''
-
-                    ### Monolith
-                    # print(message)
-                    # if "[svc=Recognaize,rpc=recognaize] produced event 'thread.terminate'" in message:
-                    #     print("Pipeline finished. Terminating now.")
-                    #     raise KeyboardInterrupt'''
-
-
-                sys.stdout.flush()
+            self.observe_events(stub)
 
         except KeyboardInterrupt:
-            # CTRL+C or SIGTERM should just terminate, not write any exception info
             pass
-        except Exception:
-            logging.error("observer thread terminated with exception: %s", traceback.format_exc())
+        except Exception as e:
+            logging.error(f"observer thread terminated with exception: {e}", exc_info=True)
+
+    def observe_events(self, stub) -> None:
+        for event in stub.observe(self.server_configuration):
+            self.handle_event(event)
+        
+    def handle_event(self, event) -> None:
+        if event.name == 'exception':
+            logging.warning("%s produced exception in method %s with traceback\n%s", 
+                            event.component, event.detail['method'], event.detail['traceback'])
+        else:
+            display_detail: Dict[str, Any] = event.detail if self.message_display else {
+                k: v for k, v in event.detail.items() if k not in 'message'
+            }
+            detailstr = ' '.join(f"{k}={repr(v)}" for k, v in display_detail.items())
+            logging.info("%s produced event '%s' with details %s", event.component, event.name, detailstr)
 
 
-def observe(endpoint: str, message_display, server_configuration) -> threading.Thread:
-    '''
-    create observer thread and start
-    '''
+def observe(endpoint: str, message_display: bool, server_configuration: orchestrator_pb2.OrchestrationObservationConfiguration) -> threading.Thread:
+    """
+    Create observer thread and start it.
+    """
     oot = OrchestrationObserver(endpoint, message_display, server_configuration)
     oot.start()
     return oot
@@ -136,19 +109,3 @@ if __name__ == '__main__':
     init_run()
     observe()
 
-
-
-# pathSolutions = "solutions/"
-# userName = "CheckMorePipelines"
-# namespace = "pipelinebmono-407f63f861af4fbbb901263aafd36c22"
-# namespace = "recognaizestream-c907a48be05c4a778f4c7d242509dde4"
-# namespace = "ai4industrypilot-5fac072e53bf48e6a7d883e38b36e1f7"
-# orchestrator = Orchestrator(pathSolutions + "/" + userName + "/" + namespace)
-
-
-
-# port = 30012
-# port = 30039
-# port = 30002
-
-# endpoint = 'localhost:{}'.format(port)
