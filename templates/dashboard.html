@@ -97,17 +97,18 @@
         </h6>
       </div>
       <div class="container-fluid">
+        {% with status=pipeline.get_status(), pods_information=pipeline.get_pods_information(), shared_folder_status=pipeline.get_shared_folder_status() %}
         <div class="card-body">
           <!-- Page Heading -->
-          {% if pipeline.get_status() == 'Not Ready'%}
+          {% if status == 'Not Ready' %}
           <button type="button" class="btn btn-labeled btn-danger"><span class="btn-label"><i
-                class="fas fa-cog"></i></span>Status: {{pipeline.get_status()}}</button>
-          {% elif pipeline.get_status() == 'Running'%}
+             class="fas fa-cog"></i></span>Status: {{status}}</button>
+          {% elif status == 'Running' %}
           <button type="button" class="btn btn-labeled btn-success"><span class="btn-label"><i
-                class="fas fa-cog"></i></span>Status: {{pipeline.get_status()}}</button>
+             class="fas fa-cog"></i></span>Status: {{status}}</button>
           {% else %}
           <button type="button" class="btn btn-labeled btn-primary"><span class="btn-label"><i
-                class="fas fa-cog"></i></span>Status: {{pipeline.get_status()}}</button>
+             class="fas fa-cog"></i></span>Status: {{status}}</button>
           {% endif %}
           <!-- vertical separator -->
           <span
@@ -162,7 +163,7 @@
               {% set status = namespace(value=0) %}
               {% set webui = namespace(value=100) %}
               {% set log = namespace(value=200) %}
-              {% for node in pipeline.get_pods_information() %}
+              {% for node in pods_information %}
               <tr>
                 <td>{% if node['Status'] %}
                   <img src="/static/img/tick.png" alt="" height=30 width=35></img>
@@ -206,11 +207,11 @@
               {% set webui.value = webui.value + 1 %}
               {% set log.value = log.value + 1 %}
               {% endfor %}
-              {% if pipeline.get_shared_folder_status() != None %}
+              {% if shared_folder_status != None %}
               <tr>
                 {% set folder = namespace(value=0) %}
                 {% set path = namespace(value=5) %}
-                <td>{% if pipeline.get_shared_folder_status() %}
+                <td>{% if shared_folder_status %}
                   <img src="/static/img/tick.png" alt="" height=30 width=35></img>
                   {% else %}
                   <img src="/static/img/cross.png" alt="" height=30 width=35></img>
@@ -218,13 +219,13 @@
                 </td>
                 <td style="color: #004A82;">SharedFolder</td>
                 <td>
-                  {% if pipeline.get_shared_folder_status() %}
+                  {% if shared_folder_status %}
                   <a class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i
                       class="fa-sm text-white-50"></i>show</a>
                 </td>
                 {% else %}
                 <div id="{{ folder.value }}" name="{{ folder.value }}" hidden="True">{{
-                  pipeline.get_shared_folder_status() }}</div>
+                  shared_folder_status }}</div>
                 <a href="#" onclick="displayStatus(document.getElementById({{ folder.value }}).innerHTML);"
                   class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i
                     class="fa-sm text-white-50"></i>show</a></td>
@@ -234,7 +235,7 @@
                 {% set folder.value = folder.value + 1 %}
                 {% set path.value = path.value + 1 %}
                 <td>
-                  {% if pipeline.get_shared_folder_status() %}
+                  {% if shared_folder_status %}
                   <div id="{{ path.value }}" name="{{ path.value }}" hidden="True">127.0.0.250:8000</div>
                   <a href="/shared_folder?path=" target="_blank"
                     class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i
@@ -251,6 +252,7 @@
           </table>
 
         </div>
+        {% endwith %}
       </div>
     </div>
   </div>
