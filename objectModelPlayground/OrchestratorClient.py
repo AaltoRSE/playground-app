@@ -42,6 +42,7 @@ class OrchestrationObserver(threading.Thread):
         self.message_display = message_display
         assert isinstance(server_configuration, orchestrator_pb2.OrchestrationObservationConfiguration)
         self.server_configuration = server_configuration
+        self.stop_event = threading.Event()
 
     def run(self) -> None:
         """Thread's run method."""
@@ -58,6 +59,9 @@ class OrchestrationObserver(threading.Thread):
 
     def observe_events(self, stub) -> None:
         for event in stub.observe(self.server_configuration):
+            if self.stop_event.is_set():
+                logging.info("Stopping the observer thread.")
+                break
             self.handle_event(event)
         
     def handle_event(self, event) -> None:
@@ -71,11 +75,18 @@ class OrchestrationObserver(threading.Thread):
             detailstr = ' '.join(f"{k}={repr(v)}" for k, v in display_detail.items())
             logging.info("%s produced event '%s' with details %s", event.component, event.name, detailstr)
 
+    def stop(self):
+        self.stop_event.set()
 
-def observe(endpoint: str, message_display: bool, server_configuration: orchestrator_pb2.OrchestrationObservationConfiguration) -> threading.Thread:
+def observe(endpoint: str) -> threading.Thread:
     """
     Create observer thread and start it.
     """
+    message_display = False
+    server_configuration = orchestrator_pb2.OrchestrationObservationConfiguration(
+        name_regex=observer_namefilter,
+        component_regex=observer_componentfilter
+    )
     oot = OrchestrationObserver(endpoint, message_display, server_configuration)
     oot.start()
     return oot
@@ -93,15 +104,7 @@ def init_run(orchestrator, endpoint):
                     iterations=DEFAULT_ITERATIONS,
                     )))
         print(stub.run(orchestrator_pb2.RunLabel()))
-
-def observee(endpoint):
-    print("Calling observe stub..")
-    server_configuration = orchestrator_pb2.OrchestrationObservationConfiguration(
-        name_regex=observer_namefilter,
-        component_regex=observer_componentfilter
-    )
-    oot = observe(endpoint=endpoint, message_display=False, server_configuration=server_configuration)
-    return oot
+        
 
 
 if __name__ == '__main__':

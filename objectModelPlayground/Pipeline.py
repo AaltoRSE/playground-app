@@ -129,7 +129,7 @@ class Pipeline:
         if(not self._is_running()):
             logger.info("Init orchestrator_client.py ..")
             self._init_run()
-        self._observe().join()
+        return self._observe()
 
     def is_pipeline(self):
         orchestrator = Orchestrator(path_solution=self.__get_path_solution_user_pipeline())
@@ -407,7 +407,7 @@ class Pipeline:
         return feature_dict, start_node, metrics_results
     
     def _observe(self):
-        return OrchestratorClient.observee(endpoint=self._get_endpoint_orchestrator())
+        return OrchestratorClient.observe(endpoint=self._get_endpoint_orchestrator())
 
     def __has_shared_folder(self):
         return self.get_orchestrator().has_shared_folder()
