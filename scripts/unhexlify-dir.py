@@ -15,4 +15,4 @@
 # limitations under the License.
 # ===============LICENSE_END==========================================================
 import os, sys, binascii
-[print(binascii.unhexlify(d)) for d in os.listdir(sys.argv[1])]
+[print(f'{binascii.unhexlify(d)}:  {d}') for d in os.listdir(sys.argv[1])]
