@@ -105,7 +105,7 @@ class Pipeline:
             return is_ready
         if not self.is_pipeline():
             return is_ready
-        if self._is_running():
+        if self.is_running():
             return "Running"
         return is_ready
 
@@ -126,7 +126,7 @@ class Pipeline:
     def run_orchestrator_client(self, timeout_seconds=100):
         self.__wait_until_ready(timeout_seconds)
 
-        if(not self._is_running()):
+        if(not self.is_running()):
             logger.info("Init orchestrator_client.py ..")
             self._init_run()
         return self._observe()
@@ -175,7 +175,7 @@ class Pipeline:
         except Exception as e:
             print(e)
 
-    def _is_running(self):
+    def is_running(self):
         
         host_ip = self._get_node_manager().get_host_ip()
         port = self.get_orchestrator().get_container_port("orchestrator")

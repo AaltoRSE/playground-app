@@ -48,7 +48,6 @@ else:
     from dev_login import *
 from app import app
 
-pipelineThreads = {}
 pathSolutionZips = "solutionZips/"
 pathSolutions = "solutions/"
 pm = PipelineManager(pathSolutions)
@@ -169,17 +168,6 @@ def solution_description(file_url):
     )
     return response
 
-def stop_pipeline_observation():
-    username=session.get('username')
-    keys= pipelineThreads.keys()
-    logger.warning(f"pipelineThreads: {keys}")
-    if username in keys:
-        print("Key found for pipelineThread! Deleting now..")
-        pipelineThreads[username].stop()
-        print("deleting now..")
-        del pipelineThreads[username]
-        keys= pipelineThreads.keys()
-        logger.warning(f"pipelineThreads: {keys}")
 
 @app.route('/reset', methods=['GET','POST'])
 @logged_in
@@ -197,7 +185,6 @@ def reset():
         # Check the value of the 'action' parameter and perform corresponding actions
         if action == 'Submit':
             if 'current_deployment_id' in session:
-                stop_pipeline_observation()
                 pipeline = pm.get_pipeline(user_name=session.get('username'), pipeline_id=session.get('current_deployment_id'))
                 pipeline.reset_pipeline(reset_pvc=reset_value)
                 session['refresh'] = [3,3]
@@ -261,15 +248,11 @@ def dir_listing():
 @app.route('/run', methods=['GET'])
 @logged_in
 def run():
-    username=session.get('username')
-    keys= pipelineThreads.keys()
-    logger.warning(f"pipelineThreads: {keys}")
-    if username in keys:
+    pipeline = pm.get_pipeline(user_name=session.get('username'), pipeline_id=session.get('current_deployment_id'))
+    if pipeline.is_running():
         logger.info(f"Pipeline Run already active")
     else:
-        pipeline = pm.get_pipeline(user_name=session.get('username'), pipeline_id=session.get('current_deployment_id'))
-        pipelineThreads[username] = pipeline.run_orchestrator_client()
-    print(pipelineThreads[session.get('username')])
+        pipeline.run_orchestrator_client()
     session['refresh'] = [3,3,3,3,3]
 
     return redirect('/dashboard')  # redirect to home page with message
