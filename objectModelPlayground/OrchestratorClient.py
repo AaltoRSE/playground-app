@@ -92,18 +92,18 @@ def observe(endpoint: str) -> threading.Thread:
     return oot
 
 def init_run(orchestrator, endpoint):
-    print("Calling init and run stubs..")
+    logging.info("Calling init and run stubs..")
     with grpc.insecure_channel(endpoint) as channel:
         stub = orchestrator_pb2_grpc.OrchestratorStub(channel)
 
-        print(stub.initialize(orchestrator_pb2.OrchestrationConfiguration(
+        logging.info(stub.initialize(orchestrator_pb2.OrchestrationConfiguration(
                     blueprint=orchestrator.get_blueprint(),
                     dockerinfo=orchestrator.get_docker_info(),
                     protofiles=orchestrator.get_protofiles(),
                     queuesize=DEFAULT_QUEUE_SIZE,
                     iterations=DEFAULT_ITERATIONS,
                     )))
-        print(stub.run(orchestrator_pb2.RunLabel()))
+        logging.info(stub.run(orchestrator_pb2.RunLabel()))
         
 
 
