@@ -1,6 +1,7 @@
 import subprocess
 import logging
 import json
+import socket
 from kubernetes import client
 
 from objectModelPlayground.K8sUtils import K8sClient
@@ -21,9 +22,10 @@ class ExecutionRunManager:
         nodes = K8sClient.get_core_v1_api().list_node()
 
         try:
-            for node in nodes.items:            
+            for node in nodes.items:
+                node_ip=node.status.addresses[0].address
                 system_info["system_name"] = node.metadata.name
-                system_info["fqdn"] = node.status.addresses[0].address
+                system_info["fqdn"] = socket.gethostbyaddr(node_ip)[0]
                 system_info["cpu"] = node.status.capacity.get("cpu","")
                 system_info["gpu"] = node.status.capacity.get("gpu","")
                 system_info["memory"] = node.status.capacity.get("memory","")
