@@ -101,7 +101,6 @@ class NodeManager:
     def _get_pod_information(self, pod):
         try:
             self._check_namespace(pod)
-            logs = self._get_logs(pod)
             container_names=self._get_container_names(pod)
             if container_names is None:
                 container_name1=None
@@ -109,11 +108,9 @@ class NodeManager:
                 container_name1 = container_names[0]
             host_ip = self._get_host_ip(pod)
             is_ready_container = self.__is_ready(pod)
-            status_details = self._get_status_details(pod)
             pod_name = self._get_pod_name(pod=pod)
             return {"Nodename": container_name1, "hostIP": host_ip,
                     "Status": is_ready_container,
-                    "Status-details": status_details,
                     "PodName": pod_name}
         except Exception as e:
             logger.error(f"Getting pod information was not possible. Probably containers are not ready yet. Exception raised: {e}")
@@ -247,6 +244,16 @@ class NodeManager:
             logger.warning("No host ip found for pod.")
             return None
 
+    def get_status_details(self, pod_name):
+        for pod in self.__get_pods():
+            pod_name_tmp = self._get_pod_name(pod)
+            logger.info(f"pod_name = {pod_name_tmp}")
+            if(self._is_pod_terminating(pod)):
+                continue
+            logger.info(f"pod Name = {pod_name_tmp}")
+            if(pod_name_tmp == pod_name):
+                return self._get_status_details(pod)
+
     def _get_status_details(self, pod):
         try:
             pod_name = self._get_pod_name(pod)
@@ -267,6 +274,7 @@ class NodeManager:
                 'restarts': num_restarts,
                 'age': age
             }
+            extensive_status = pod.status.container_statuses
 
             result = (
                 "-------------------------------------------------\n"
@@ -274,7 +282,7 @@ class NodeManager:
                 f"{short_status}\n\n"
                 "-------------------------------------------------\n"
                 "Extensive Status: \n\n"
-                f"{pod.status.container_statuses}"
+                f"{extensive_status}"
             )
             return result
         except Exception as e:

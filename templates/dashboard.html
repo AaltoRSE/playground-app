@@ -174,11 +174,9 @@
                 <td style="color: #004A82;">{{ node['Nodename'] }}</td>
 
                 <td>
-                  <div id="{{ status.value }}" name="{{ status.value }}" hidden="True">{{ node['Status-details'] }}
-                  </div>
-                  <a href="#" onclick="displayStatus(document.getElementById({{ status.value }}).innerHTML);"
-                    class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i
-                      class="fa-sm text-white-50"></i>show</a>
+                  <button type="button" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" onclick="displayStatusDetails('{{ node['PodName'] }}')">
+                    <i class="fa-sm text-white-50"></i> view
+                  </button>
                 </td>
                 <td>
                   <button type="button" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" onclick="displayLogs('{{ node['PodName'] }}')">
@@ -214,14 +212,14 @@
                 <td>
                   {% if shared_folder_status %}
                   <a class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i
-                      class="fa-sm text-white-50"></i>show</a>
+                      class="fa-sm text-white-50"></i>view</a>
                 </td>
                 {% else %}
                 <div id="{{ folder.value }}" name="{{ folder.value }}" hidden="True">{{
                   shared_folder_status }}</div>
-                <a href="#" onclick="displayStatus(document.getElementById({{ folder.value }}).innerHTML);"
+                <a href="#" onclick="displayStatusSharedFolder(document.getElementById({{ folder.value }}).innerHTML);"
                   class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i
-                    class="fa-sm text-white-50"></i>show</a></td>
+                    class="fa-sm text-white-50"></i>view</a></td>
                 {% endif %}
                 </td>
                 <td></td>
@@ -277,11 +275,16 @@
 {% endblock %}
 <!-- Bootstrap core JavaScript-->
 <script type="text/javascript">
-  function displayStatus(text) {
+  function displayStatusSharedFolder(text) {
     var tab_status = window.open('/status', '_blank');
     tab_status.document.write('<pre>' + text + '</pre>');
     tab_status.document.close();
     return false;
+  }
+  function displayStatusDetails(pod_name) {
+    var url = '/status_details?pod_name=' + pod_name ;
+    window.open(url, '_blank');
+
   }
   function displayLogs(pod_name) {
     var url = '/logs?pod_name=' + pod_name ;

@@ -228,9 +228,26 @@ def logs():
             logs = pipeline.get_pipeline_logs().split("\n")
     return render_template('logs.html', text=logs)
 
-        return render_template('logs.html', text=logs)
+@app.route('/status_details/', methods=['GET'])
+@logged_in
+def status_details():
+    pipeline = pm.get_pipeline(user_name=session.get('username'), pipeline_id=session.get('current_deployment_id'))
+    try:
+        pod_name = request.args.get('pod_name')
+        if pod_name is None:
+            abort(400, "Required: pod_name")
 
-    return redirect('/')  # redirect to home page with message
+        if 'current_deployment_id' in session:
+            logs = pipeline._get_node_manager().get_status_details(pod_name=pod_name).split("\n")
+
+        return render_template('logs.html', text=logs)
+    except Exception as e:
+        logger.info(f"exception in displaying status_details: {str(e)}")
+        response = app.response_class(
+            response=f"displaying status_details failed with: {str(e)}",
+            status=500
+        )
+        return response
 
 @app.route('/shared_folder/', methods=['GET'])
 @logged_in
