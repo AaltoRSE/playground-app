@@ -21,7 +21,6 @@ import subprocess
 import os
 import base64
 import json
-import threading
 import logging
 
 

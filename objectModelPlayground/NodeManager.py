@@ -15,11 +15,11 @@
 # ===============LICENSE_END==========================================================
 import time
 import logging
-import threading
 import json
 import re
 from datetime import datetime, timezone
 from kubernetes import client
+from concurrent.futures import ThreadPoolExecutor
 
 from objectModelPlayground.K8sUtils import K8sClient
 
@@ -57,19 +57,17 @@ class NodeManager:
         return pods_names
 
     def get_pods_information(self):
-        logger.info("getPodsInformation ..")
+        logger.info("Getting pods information...")
         pods_information = []
-        lock = threading.Lock()
-        threads = []
-        for pod in self.__get_pods():
-            t = threading.Thread(target=self._get_pods_information_worker, args=(pod, pods_information, lock))
-            t.start()
-            threads.append(t)
 
-        for t in threads:
-            t.join()
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = [executor.submit(self._get_pod_info_safe, pod) for pod in self.__get_pods()]
+            for future in futures:
+                pod_info = future.result()
+                if pod_info is not None:
+                    pods_information.append(pod_info)
 
-        pods_information = sorted(pods_information, key=lambda x: x["Nodename"])
+        pods_information.sort(key=lambda x: x["Nodename"])
         return pods_information
 
     def get_status_details(self, pod_name):
@@ -82,12 +80,17 @@ class NodeManager:
             if(pod_name_tmp == pod_name):
                 return self._get_status_details(pod)
 
-    def _get_pods_information_worker(self, pod, pods_information, lock):
-        if self._is_pod_terminating(pod):
-            return
-        pod_info = self._get_pod_information(pod)
-        with lock:
-            pods_information.append(pod_info)
+    def _get_pod_info_safe(self, pod):
+        try:
+            pod_name = self._get_pod_name(pod=pod)
+            if self._is_pod_terminating(pod):
+                logger.info(f"Pod {pod_name} is terminating. Skipping.")
+                return None
+            return self._get_pod_information(pod)
+        except Exception as e:
+            pod_name = pod_name if 'pod_name' in locals() else 'Unknown'
+            logger.error(f"Error getting information for pod {pod_name}: {e}")
+            return None
 
     def wait_until_ready(self, timeout_seconds=120):
         for time_passed in range(timeout_seconds):
