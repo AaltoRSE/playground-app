@@ -1,9 +1,20 @@
 <html>
+<head>
+    <style>
+        pre {
+            margin: 0; /* Removes default margin */
+            white-space: pre-wrap; /* Wraps text */
+        }
+        ul {
+            list-style-type: none; /* Removes bullet points */
+        }
+    </style>
+</head>
 <body>
     <ul>
     {% for line in text %}
-        {{ line }}<br>
+        <li><pre>{{ line | safe }}</pre></li>
     {% endfor %}
-</ul>
+    </ul>
 </body>
 </html>

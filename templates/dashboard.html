@@ -162,10 +162,10 @@
             <tbody class="bg-gradient-primary">
               {% set status = namespace(value=0) %}
               {% set webui = namespace(value=100) %}
-              {% set log = namespace(value=200) %}
               {% for node in pods_information %}
               <tr>
-                <td>{% if node['Status'] %}
+                <td>
+                  {% if node['Status'] %}
                   <img src="/static/img/tick.png" alt="" height=30 width=35></img>
                   {% else %}
                   <img src="/static/img/cross.png" alt="" height=30 width=35></img>
@@ -181,16 +181,10 @@
                       class="fa-sm text-white-50"></i>show</a>
                 </td>
                 <td>
-                  {% if node['Logs'] == None %}
-                  <a class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i
-                      class="fa-sm text-white-50"></i>view</a>
+                  <button type="button" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" onclick="displayLogs('{{ node['PodName'] }}')">
+                    <i class="fa-sm text-white-50"></i> view
+                  </button>
                 </td>
-                {% else %}
-                <div id="{{ log.value }}" name="{{ log.value }}" hidden="True">{{ node['Logs'] }}</div>
-                <a href="#" onclick="displayLogs(document.getElementById({{ log.value }}).innerHTML);"
-                  class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i
-                    class="fa-sm text-white-50"></i>view</a></td>
-                {% endif %}
                 <td>
                   {% if node['Web-UI'] == None %}
                   <a class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i
@@ -205,7 +199,6 @@
               </tr>
               {% set status.value = status.value + 1 %}
               {% set webui.value = webui.value + 1 %}
-              {% set log.value = log.value + 1 %}
               {% endfor %}
               {% if shared_folder_status != None %}
               <tr>
@@ -290,11 +283,9 @@
     tab_status.document.close();
     return false;
   }
-  function displayLogs(text) {
-    var tab_logs = window.open('/logs', '_blank');
-    tab_logs.document.write('<pre>' + text + '</pre>');
-    tab_logs.document.close();
-    return false;
+  function displayLogs(pod_name) {
+    var url = '/logs?pod_name=' + pod_name ;
+    window.open(url, '_blank');
   }
   function displayUI(url) {
     // window.open(url,'popUpWindow','height=300,width=400,left=10,top=10,resizable=yes,scrollbars=yes,toolbar=yes,menubar=no,location=no,directories=no,status=yes');

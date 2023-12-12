@@ -57,20 +57,6 @@ class NodeManager:
             pods_names.append(self._get_pod_name(pod))
         return pods_names
 
-
-    def get_logs(self, container_name):
-        self.wait_until_ready()
-        for pod in self.__get_pods():
-            pod_name = self._get_pod_name(pod)
-            logger.info(f"pod_name = {pod_name}")
-            if(self._is_pod_terminating(pod)):
-                continue
-            logger.info(f"pod Name = {pod_name}")
-            if(pod_name == container_name):
-                logs = self._get_logs(pod)
-                return logs
-                
-
     def get_pods_information(self):
         logger.info("getPodsInformation ..")
         pods_information = []
@@ -124,14 +110,15 @@ class NodeManager:
             host_ip = self._get_host_ip(pod)
             is_ready_container = self.__is_ready(pod)
             status_details = self._get_status_details(pod)
+            pod_name = self._get_pod_name(pod=pod)
             return {"Nodename": container_name1, "hostIP": host_ip,
-                    "Logs": logs, "Status": is_ready_container,
-                    "Status-details": status_details}
+                    "Status": is_ready_container,
+                    "Status-details": status_details,
+                    "PodName": pod_name}
         except Exception as e:
             logger.error(f"Getting pod information was not possible. Probably containers are not ready yet. Exception raised: {e}")
 
-    def _get_logs(self, pod):
-        pod_name = self._get_pod_name(pod)
+    def get_logs(self, pod_name):
         try:
             logger.info(f"Retrieving logs for pod '{pod_name}' in namespace '{self.namespace}'..")
             logs = K8sClient.get_core_v1_api().read_namespaced_pod_log(name=pod_name, namespace=self.namespace)
@@ -159,7 +146,7 @@ class NodeManager:
 
             for start_node in entry_nodes:
                 if start_node in pod_name:
-                    log_entry = self._get_logs(pod) # Read the logs for such nodes
+                    log_entry = self.get_logs(pod_name=pod_name) # Read the logs for such nodes
 
                     dict_pattern = r"INFO:root:\{('dataset_features': \{.*?\})\}" 
                     match = re.search(dict_pattern, log_entry) # Check if the match is found
@@ -194,7 +181,7 @@ class NodeManager:
                 continue
             logger.info(f"pod Name = {pod_name}")
 
-            initial_log_entry = self._get_logs(pod) # Read the logs for all the existing pods in the pipeline
+            initial_log_entry = self.get_logs(pod_name=pod_name)
 
             initial_dict_pattern = r"INFO:root:MetricsAvailable" # Log entry to scan the nodes with metrics
             if re.search(initial_dict_pattern, initial_log_entry):
@@ -205,7 +192,7 @@ class NodeManager:
 
         # Iterate through nodes containing metrics and gather their data into a dictionary
         for node in metrics_nodes:
-            log_entry = self._get_logs(node)
+            log_entry = self.get_logs(self._get_pod_name(node))
 
             dict_pattern = r"INFO:root:\{('metrics': \{.*?\})\}"
             match = re.search(dict_pattern, log_entry) # Check if the match is found

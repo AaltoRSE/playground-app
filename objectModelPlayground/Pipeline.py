@@ -96,8 +96,8 @@ class Pipeline:
     def get_pipeline_id(self):
         return self.__get_namespace()
 
-    def get_logs(self):
-        return self._get_node_manager().getLogs()
+    def get_logs(self, pod_name):
+        return self._get_node_manager().get_logs(pod_name=pod_name)
 
     def get_status(self):
         is_ready = self._get_node_manager().get_pods_status()

@@ -214,9 +214,20 @@ def delete():
 @app.route('/pipeline_logs/', methods=['GET'])
 @logged_in
 def logs():
-    if 'current_deployment_id' in session:
-        pipeline = pm.get_pipeline(user_name=session.get('username'), pipeline_id=session.get('current_deployment_id'))
-        logs = pipeline.get_pipeline_logs().split("\n")
+    pipeline = pm.get_pipeline(user_name=session.get('username'), pipeline_id=session.get('current_deployment_id'))
+    try:
+        pod_name = request.args.get('pod_name')
+        if pod_name is None:
+            abort(400, "Required: pod_name")
+
+        if 'current_deployment_id' in session:
+            logs = pipeline._get_node_manager().get_logs(pod_name=pod_name).split("\n")
+    except Exception as e:
+        logger.info(f"exception in displaying logs: {str(e)}")
+        if 'current_deployment_id' in session:
+            logs = pipeline.get_pipeline_logs().split("\n")
+    return render_template('logs.html', text=logs)
+
         return render_template('logs.html', text=logs)
 
     return redirect('/')  # redirect to home page with message
