@@ -454,16 +454,6 @@ class Pipeline:
         self.__wait_until_ready()
         self.__run_and_log(cmd=cmd,function="__run_jupyter_deployment_script")
 
-    def __pull_images(self):
-        image_names = self.__get_image_names()
-        for image_name in image_names:
-            logger.info(f"pulling image {image_name} ..")
-            self.__docker_pull(image_name)
-
-    def __docker_pull(self, image):
-        cmd = "docker pull " + image
-        self.__run_and_log(cmd, "__dockerPull")
-
     def __create_namespace(self):
         meta = client.models.v1_object_meta.V1ObjectMeta(name=self.__get_namespace())
         body = client.V1Namespace(metadata=meta)
@@ -533,25 +523,6 @@ class Pipeline:
 
     def __get_path_logs(self):
         return os.path.join(self.__get_path_solution_user_pipeline(), "logs.txt")
-
-    def __get_image_names(self):
-        pathDeploymentsSolution = os.path.join(self.__get_path_solution_user_pipeline(), "deployments")
-        paths = glob.glob(pathDeploymentsSolution + "/*deployment.yaml")
-        image_names = []
-        for path in paths:
-            image_names.append(self.__get_image_name(path))
-        return image_names
-
-    def __get_image_name(self, path):
-        with open(path, 'r') as file:
-            data = file.read().split(" ")
-
-            search_string = 'image:'
-            index_search_string = data.index(search_string)
-            image_name = data[index_search_string + 1]
-            image_name = image_name.rstrip('\n')
-
-            return image_name
 
     def __get_path_solution_user_pipeline(self):
         return os.path.join(self.__get_path_solution_user(), self.__get_namespace())

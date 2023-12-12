@@ -31,7 +31,6 @@ class NodeManager:
         self.namespace = namespace
 
     def get_pods_status(self):
-        # what about other states like: running, finished. we need thread-information here
         logger.info("getPodsStatus ..")
         pods = self.__get_pods()
         if len(pods) == 0:
@@ -73,6 +72,16 @@ class NodeManager:
         pods_information = sorted(pods_information, key=lambda x: x["Nodename"])
         return pods_information
 
+    def get_status_details(self, pod_name):
+        for pod in self.__get_pods():
+            pod_name_tmp = self._get_pod_name(pod)
+            logger.info(f"pod_name = {pod_name_tmp}")
+            if(self._is_pod_terminating(pod)):
+                continue
+            logger.info(f"pod Name = {pod_name_tmp}")
+            if(pod_name_tmp == pod_name):
+                return self._get_status_details(pod)
+
     def _get_pods_information_worker(self, pod, pods_information, lock):
         if self._is_pod_terminating(pod):
             return
@@ -84,7 +93,6 @@ class NodeManager:
         for time_passed in range(timeout_seconds):
             try:
                 api_response = K8sClient.get_core_v1_api().list_namespaced_pod(self.namespace, field_selector='status.phase!=Running')
-
                 if len(api_response.items) == 0:
                     return
 
@@ -95,7 +103,6 @@ class NodeManager:
                 logger.error(f"Error occurred while getting pods. {str(e)}")
             
             time.sleep(1)
-
         logger.error(f"Namespace {self.namespace} was not ready after {timeout_seconds} seconds.")
 
     def _get_pod_information(self, pod):
@@ -112,6 +119,7 @@ class NodeManager:
             return {"Nodename": container_name1, "hostIP": host_ip,
                     "Status": is_ready_container,
                     "PodName": pod_name}
+
         except Exception as e:
             logger.error(f"Getting pod information was not possible. Probably containers are not ready yet. Exception raised: {e}")
 
@@ -207,24 +215,6 @@ class NodeManager:
 
         return metrics_results
     
-    def _is_broken(self, pod):
-        pod_name = self._get_pod_name(pod)
-        try:
-            api_response = K8sClient.get_core_v1_api().read_namespaced_pod(name=pod_name, namespace=self.namespace)
-            for container_status in api_response.status.container_statuses:
-                if container_status.state.waiting is not None:
-                    logger.info(f"Container {container_status.name} status: {container_status.state.waiting.reason}")
-                    return True
-                elif container_status.state.running is not None:
-                    logger.info(f"Container {container_status.name} is running")
-                    return False
-                elif container_status.state.terminated is not None:
-                    logger.info(f"Container {container_status.name} terminated with reason: {container_status.state.terminated.reason}")
-                    return True
-        except client.exceptions.ApiException as e:
-            logger.error("Exception when calling CoreV1Api->read_namespaced_pod: %s\n" % e)
-            return True
-
     def _wait_until_ready(self, pod, timeout_seconds, time_passed=0):
         try:
             pod_name = self._get_pod_name(pod)
@@ -244,15 +234,6 @@ class NodeManager:
             logger.warning("No host ip found for pod.")
             return None
 
-    def get_status_details(self, pod_name):
-        for pod in self.__get_pods():
-            pod_name_tmp = self._get_pod_name(pod)
-            logger.info(f"pod_name = {pod_name_tmp}")
-            if(self._is_pod_terminating(pod)):
-                continue
-            logger.info(f"pod Name = {pod_name_tmp}")
-            if(pod_name_tmp == pod_name):
-                return self._get_status_details(pod)
 
     def _get_status_details(self, pod):
         try:
@@ -289,8 +270,6 @@ class NodeManager:
             logger.warning(f"Getting Status Details was not possible. Probably containers are not ready yet. Exception raised: {e}")
             return None
     
-    def _get_pod_metadata(self, pod):
-        return pod.metadata
 
     def _get_pod_name(self, pod):
         return pod.metadata.name
@@ -301,12 +280,6 @@ class NodeManager:
         for container in containers:
             containerNames.append(container.name)
         return containerNames
-
-    def _get_node_name(self, pod):
-        return self._get_image_name(pod).split("/")[-1]
-
-    def _get_image_name(self, pod):
-        return pod.spec.containers[0].image
 
     def _check_namespace(self, pod):
         if (self.namespace != pod.metadata.namespace):
@@ -333,7 +306,6 @@ class NodeManager:
 
         try:
             api_response = K8sClient.get_core_v1_api().read_namespaced_pod(name=pod_name, namespace=self.namespace)
-            # return api_response.status.phase == 'Running'
             if api_response.status.phase == 'Running':
                 for condition in api_response.status.conditions:
                     if condition.type == "Ready":

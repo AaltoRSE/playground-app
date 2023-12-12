@@ -92,11 +92,9 @@ def clean_current_deployment():
 
 @app.errorhandler(Exception)
 def handle_error(e):
-    code = 500
-    # session.pop('current_deployment_id')
     print(f'handle_error(): {e}')
     try:
-        x,pipeline_id = e.args
+        _,pipeline_id = e.args
         if(pipeline_id in pm.get_pipeline_ids(session.get('username'))):
             _remove_pipeline(pipeline_id=pipeline_id)
     except:
