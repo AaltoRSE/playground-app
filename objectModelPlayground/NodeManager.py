@@ -20,6 +20,7 @@ import re
 from datetime import datetime, timezone
 from kubernetes import client
 from concurrent.futures import ThreadPoolExecutor
+import ast
 
 from objectModelPlayground.K8sUtils import K8sClient
 
@@ -155,16 +156,15 @@ class NodeManager:
             for start_node in entry_nodes:
                 if start_node in pod_name:
                     log_entry = self.get_logs(pod_name=pod_name) # Read the logs for such nodes
-
-                    dict_pattern = r"INFO:root:\{('dataset_features': \{.*?\})\}" 
+                    dict_pattern = r"{'dataset_features': .*}"
                     match = re.search(dict_pattern, log_entry) # Check if the match is found
-                
+   
                     if match:
                         try:
-                            dict_str = match.group(1).replace("'", '"')
-                            feature_dict = json.loads("{" + dict_str + "}")
-                        except json.JSONDecodeError as e:
-                            logger.warning(f"JSON decode error: {e}")
+                            dict_str = match.group()
+                            feature_dict = ast.literal_eval(dict_str)
+                        except (ValueError, SyntaxError) as e:
+                            logger.error(f"Error in evaluating dataset string: {e}")
 
                     if feature_dict:
                         break
@@ -191,33 +191,32 @@ class NodeManager:
 
             initial_log_entry = self.get_logs(pod_name=pod_name)
 
-            initial_dict_pattern = r"INFO:root:MetricsAvailable" # Log entry to scan the nodes with metrics
+            initial_dict_pattern = r"MetricsAvailable" # Log entry to scan the nodes with metrics
             if re.search(initial_dict_pattern, initial_log_entry):
                 metrics_nodes.append(pod)
 
-      
         logger.info(f"Nodes containing metrics= {', '.join(node.metadata.name for node in metrics_nodes)}")
 
-        # Iterate through nodes containing metrics and gather their data into a dictionary
         for node in metrics_nodes:
-            log_entry = self.get_logs(self._get_pod_name(node))
-
-            dict_pattern = r"INFO:root:\{('metrics': \{.*?\})\}"
-            match = re.search(dict_pattern, log_entry) # Check if the match is found
-            
             metrics_dict = {}
+
+            log_entry = self.get_logs(self._get_pod_name(node))
+            match = re.search(r"{'metrics': .*}", log_entry) # Log entry to retrieve the nodes with metrics
 
             if match:
                 try:
-                    dict_str = match.group(1).replace("'", '"')
-                    metrics_dict = json.loads("{" + dict_str + "}")
-                except json.JSONDecodeError as e:
-                    logger.warning(f"JSON decode error: {e}")
-            
-            metrics_results[node.metadata.name] = metrics_dict # Gather the data into this dictionary
+                    metrics_str = match.group()  # Extract the captured group
+                    metrics_dict = ast.literal_eval(metrics_str)
+                    metrics_results[node.metadata.name] = metrics_dict       
+                except (ValueError, SyntaxError) as e:
+                    logger.error(f"Error in evaluating metrics string: {e}")
+                    metrics_results[node.metadata.name] = None
+            else:
+                metrics_results[node.metadata.name] = None
+                logger.error("Match not found. Metrics not captured.")
 
         return metrics_results
-    
+           
     def _wait_until_ready(self, pod, timeout_seconds, time_passed=0):
         try:
             pod_name = self._get_pod_name(pod)
