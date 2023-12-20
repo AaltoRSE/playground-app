@@ -105,6 +105,13 @@ def init_run(orchestrator, endpoint):
                     )))
         logging.info(stub.run(orchestrator_pb2.RunLabel()))
         
+def stop_orchestration(endpoint):
+    logging.info("Stopping orchestration..")
+    with grpc.insecure_channel(endpoint) as channel:
+        stub = orchestrator_pb2_grpc.OrchestratorStub(channel)
+
+        logging.info(stub.stop_orchestration(orchestrator_pb2.RunLabel()))
+        
 
 
 if __name__ == '__main__':

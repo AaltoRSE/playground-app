@@ -44,6 +44,11 @@ class OrchestratorStub(object):
                 request_serializer=orchestrator__pb2.RunLabel.SerializeToString,
                 response_deserializer=orchestrator__pb2.OrchestrationStatus.FromString,
                 )
+        self.stop_orchestration = channel.unary_unary(
+                '/Orchestrator/stop_orchestration',
+                request_serializer=orchestrator__pb2.RunLabel.SerializeToString,
+                response_deserializer=orchestrator__pb2.OrchestrationStatus.FromString,
+                )
         self.get_status = channel.unary_unary(
                 '/Orchestrator/get_status',
                 request_serializer=orchestrator__pb2.RunLabel.SerializeToString,
@@ -72,6 +77,12 @@ class OrchestratorServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def stop_orchestration(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def get_status(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -93,6 +104,11 @@ def add_OrchestratorServicer_to_server(servicer, server):
             ),
             'run': grpc.unary_unary_rpc_method_handler(
                     servicer.run,
+                    request_deserializer=orchestrator__pb2.RunLabel.FromString,
+                    response_serializer=orchestrator__pb2.OrchestrationStatus.SerializeToString,
+            ),
+            'stop_orchestration': grpc.unary_unary_rpc_method_handler(
+                    servicer.stop_orchestration,
                     request_deserializer=orchestrator__pb2.RunLabel.FromString,
                     response_serializer=orchestrator__pb2.OrchestrationStatus.SerializeToString,
             ),
@@ -157,6 +173,23 @@ class Orchestrator(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/Orchestrator/run',
+            orchestrator__pb2.RunLabel.SerializeToString,
+            orchestrator__pb2.OrchestrationStatus.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def stop_orchestration(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/Orchestrator/stop_orchestration',
             orchestrator__pb2.RunLabel.SerializeToString,
             orchestrator__pb2.OrchestrationStatus.FromString,
             options, channel_credentials,
