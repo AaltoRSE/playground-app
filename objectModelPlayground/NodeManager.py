@@ -156,7 +156,7 @@ class NodeManager:
             for start_node in entry_nodes:
                 if start_node in pod_name:
                     log_entry = self.get_logs(pod_name=pod_name) # Read the logs for such nodes
-                    dict_pattern = r"{'dataset_features': .*}"
+                    dict_pattern = r"{'dataset_features':.*}"
                     match = re.search(dict_pattern, log_entry) # Check if the match is found
    
                     if match:
@@ -201,7 +201,7 @@ class NodeManager:
             metrics_dict = {}
 
             log_entry = self.get_logs(self._get_pod_name(node))
-            match = re.search(r"{'metrics': .*}", log_entry) # Log entry to retrieve the nodes with metrics
+            match = re.search(r"{'metrics':.*}", log_entry) # Log entry to retrieve the nodes with metrics
 
             if match:
                 try:
