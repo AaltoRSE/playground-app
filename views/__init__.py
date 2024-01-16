@@ -283,6 +283,14 @@ def run():
     return redirect('/dashboard')  # redirect to home page with message
 
 
+@app.route('/stop-orchestration', methods=['GET'])
+@logged_in
+def stop_orchestration():
+    pipeline = pm.get_pipeline(user_name=session.get('username'), pipeline_id=session.get('current_deployment_id'))
+    pipeline.stop_orchestration()
+
+    return redirect('/dashboard')
+
 def decode_and_write_solution_zip(data, username):
     directory_solution_zip = pathSolutionZips + username
     os.makedirs(directory_solution_zip, exist_ok=True)

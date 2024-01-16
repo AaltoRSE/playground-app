@@ -374,7 +374,19 @@ class Pipeline:
         feature_dict, start_node, metrics_results = self._get_metadata()
         executionrun.add_dataset_features(feature_dict, start_node)
         executionrun.add_metrics_features(metrics_results)
-      
+
+    def stop_orchestration(self):
+        logging.info("Stopping orchestration..")
+        OrchestratorClient.stop_orchestration(endpoint=self._get_endpoint_orchestrator())
+        
+        # ToDo Take Care of metrics etc.
+        # executionrun = ExecutionRun(path_solution)
+        # executionrun.create_json(namespace=self.__get_namespace())
+        # self._get_starting_nodes(path_solution)
+        # feature_dict, start_node, metrics_results = self._get_metadata()
+        # executionrun.add_dataset_features(feature_dict, start_node)
+        # executionrun.add_metrics_features(metrics_results)
+
     def _get_starting_nodes(self, path_solution):
         """
         This function scans for the entry nodes with 'Empty' as the input message and returns a list.
