@@ -365,9 +365,11 @@ class Pipeline:
 
     def _init_run(self):
         path_solution = self.__get_path_solution_user_pipeline()
-        # orchestrator = self.getOrchestrator()
         orchestrator = Orchestrator(path_solution)
         OrchestratorClient.init_run(orchestrator, endpoint=self._get_endpoint_orchestrator())
+
+    def save_execution_run(self):
+        path_solution = self.__get_path_solution_user_pipeline()
         executionrun = ExecutionRun(path_solution)
         executionrun.create_json(namespace=self.__get_namespace())
         self._get_starting_nodes(path_solution)
@@ -375,17 +377,13 @@ class Pipeline:
         executionrun.add_dataset_features(feature_dict, start_node)
         executionrun.add_metrics_features(metrics_results)
 
+
     def stop_orchestration(self):
         logging.info("Stopping orchestration..")
         OrchestratorClient.stop_orchestration(endpoint=self._get_endpoint_orchestrator())
-        
-        # ToDo Take Care of metrics etc.
-        # executionrun = ExecutionRun(path_solution)
-        # executionrun.create_json(namespace=self.__get_namespace())
-        # self._get_starting_nodes(path_solution)
-        # feature_dict, start_node, metrics_results = self._get_metadata()
-        # executionrun.add_dataset_features(feature_dict, start_node)
-        # executionrun.add_metrics_features(metrics_results)
+        logging.info("saving execution_run..")
+        self.save_execution_run()
+        logging.info("end stop_orchestration()")
 
     def _get_starting_nodes(self, path_solution):
         """
@@ -422,7 +420,7 @@ class Pipeline:
         return feature_dict, start_node, metrics_results
     
     def _observe(self):
-        return OrchestratorClient.observe(endpoint=self._get_endpoint_orchestrator())
+        return OrchestratorClient.observe(endpoint=self._get_endpoint_orchestrator(), pipeline=self)
 
     def __has_shared_folder(self):
         return self.get_orchestrator().has_shared_folder()
