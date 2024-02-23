@@ -192,6 +192,16 @@ def reset():
 
     return redirect('/dashboard')
 
+@app.route('/capture_execution_data', methods=['GET'])
+@logged_in
+def capture_execution_data():
+    logger.info("capture_execution_data..")
+    # Check if the HTTP request method is 'POST', indicating a form submission
+    if 'current_deployment_id' in session:
+        pipeline = pm.get_pipeline(user_name=session.get('username'), pipeline_id=session.get('current_deployment_id'))
+        pipeline.save_execution_run()
+
+    return redirect('/dashboard')
 
 def _remove_pipeline(pipeline_id):
     pipeline = pm.get_pipeline(user_name=session.get('username'), pipeline_id=pipeline_id)

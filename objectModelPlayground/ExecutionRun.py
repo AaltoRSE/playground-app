@@ -41,6 +41,7 @@ class ExecutionRun:
                logger.info('No image found')
          
          data["system_info"] = execution_manager.get_system_info()        # The 'system_info' key is created and the value is the returned output from get_system_info() in ExcutionRunManager
+         data["type"] = "execution-run/v1"
          json.dump(data, output_file, indent=4)
 
    def add_dataset_features(self, feature_dict, start_node):
