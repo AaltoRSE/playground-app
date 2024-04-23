@@ -446,6 +446,7 @@ class Pipeline:
         flags = f" -n {namespace} -bp {base_path} {flags_secret} "
         if flags_secret=="":
             flags += " --image_pull_policy IfNotPresent "
+        flags += f" --config-file {os.getcwd()}/config.json "
 
         cmd = "python3 " + script + flags
         self.__run_and_log(cmd=cmd,function="__run_kubernetes_client_script")

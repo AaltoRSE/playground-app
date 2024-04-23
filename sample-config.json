@@ -8,5 +8,9 @@
     "eu_login_server_url": "https://ecas.acceptance.ec.europa.eu/cas",
     "login_config": "dev-login",
     "name_kubernetes_pull_secret":"acumos-registry",
-    "path_kubernetes_pull_secret":"~/.docker/config.json"
+    "path_kubernetes_pull_secret":"~/.docker/config.json",
+    "environment_variables": [
+        {"docker_image_pattern":  "dockerhub/project/a.*", "name":  "CREDENTIALS", "value":  "12345"},
+        {"docker_image_pattern":  "dockerhub/project/b.*", "name":  "UPDATES", "value":  "daily"}
+    ]
 }
