@@ -179,12 +179,16 @@ class Pipeline:
             print(e)
 
     def is_running(self):
-        
         host_ip = self._get_node_manager().get_host_ip()
         port = self.get_orchestrator().get_container_port("orchestrator")
         endpoint = str(host_ip) + ":" + str(port)
         logger.info(f"endpoint: {endpoint}")
-        return status_client.is_running(endpoint=endpoint)
+        running = False
+        try:
+            running = status_client.is_running(endpoint=endpoint) 
+        except Exception as e:
+            print(e)
+        return running
 
     def _get_node_manager(self):
         return NodeManager(self.__get_namespace())
