@@ -347,6 +347,13 @@ def deploy_solution():
         pipeline_id = pm.create_pipeline(username, directory_solution_zip, path_kubernetes_pull_secret=app.config['path_kubernetes_pull_secret'], name_kubernetes_pull_secret=app.config['name_kubernetes_pull_secret'])
         response = app.response_class(response=f'/dashboard?selected_deployment_id={pipeline_id}', status=200)
         return response
+    except subprocess.CalledProcessError as cpe:
+        logger.info(f"exception in deploy_solution: {str(cpe)}")
+        response = app.response_class(
+            response=f"deploy solution failed with: {str(cpe)}\n\n {cpe.stdout}\n\n {cpe.stderr}",
+            status=500
+        )
+        return response
     except Exception as e:
         logger.info(f"exception in deploy_solution: {str(e)}")
         response = app.response_class(

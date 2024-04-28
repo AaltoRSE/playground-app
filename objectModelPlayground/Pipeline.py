@@ -497,9 +497,15 @@ class Pipeline:
             
     def __run_and_log(self,cmd, function):
         args = shlex.split(cmd)
-        message = subprocess.run(args, capture_output=True, text=True, check=True)
-        message = message.stdout + "\n" + message.stderr
-        self.__log(message=message, function=function)
+        try:
+            message = subprocess.run(args, capture_output=True, text=True, check=True)
+            message = message.stdout + "\n" + message.stderr
+            self.__log(message=message, function=function)
+        except subprocess.CalledProcessError as cpe:
+            message = cpe.stdout + "\n\n" + cpe.stderr
+            self.__log(message=message, function=function)
+            raise cpe
+
 
     def __log(self,message, function):
         with open(self.__get_path_logs(),"a") as log_output:
