@@ -84,6 +84,35 @@
       margin-right: 20px;
       margin-left: 20px;
     }
+
+    .breadcrumb-container {
+    font-family: Arial, sans-serif;
+    margin: 20px 0;
+    }
+
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+    }
+
+    .breadcrumb-item {
+        font-weight: bold;
+        color: #333;
+    }
+
+    .breadcrumb-separator {
+        color: gray;
+        margin: 0 8px;
+    }
+
+    .breadcrumb-item:first-child {
+        margin-left: 0;
+    }
+
+    .breadcrumb-item:last-child {
+        font-weight: normal;
+        color: #666;
+    }
   </style>
 </head>
 
@@ -161,7 +190,51 @@
                   class="btn-label"><i class="fas fa-sign-out-alt"></i></span>Capture Execution Metadata</button></a>
             {% endif %}
           {% endif %}
-          <table id='result' align="center">
+          {% if pipeline.has_execution_run_file() %}
+          <form action="/upload_execution_data" method="post" style="display:inline;">
+            <button type="submit" class="btn btn-labeled btn-info">
+                <span class="btn-label"><i class="fas fa-sign-out-alt"></i></span>Upload Execution Metadata
+            </button>
+          </form>                
+          {% endif %}
+          <!-- Modal for Showing Flash Messages -->
+          <div class="modal fade" id="promptUpload" tabindex="-1" role="dialog" aria-labelledby="uploadInformation" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="uploadInformation">Upload Status</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                          {% if messages %}
+                            {% for category, message in messages %}
+                              <div class="alert alert-{{ category }}">{{ message }}</div>
+                              {% if category =="success" %}
+                                <p class="breadcrumb-container">
+                                  Hint: The file can be found in:
+                                  <div class="breadcrumb">
+                                      <span class="breadcrumb-item">{{ request.args.get('system_url') }}</span>
+                                      <span class="breadcrumb-separator">&gt;</span>
+                                      <span class="breadcrumb-item">My Modal</span>
+                                      <span class="breadcrumb-separator">&gt;</span>
+                                      <span class="breadcrumb-item">Solution Name</span>
+                                      <span class="breadcrumb-separator">&gt;</span>
+                                      <span class="breadcrumb-item">Model Artifact</span>
+                                  </div>
+                                </p>
+                              {% endif %}
+                            {% endfor %}
+                          {% endif %}
+                        {% endwith %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <table id='result' align="center">
             <thead>
               <tr>
                 <th>Status Check</th>
@@ -328,6 +401,14 @@
     $('#promptModal').modal('show');
   });
 </script>
+
+{% if get_flashed_messages() %}
+    <script>
+        $(document).ready(function(){
+            $('#promptUpload').modal('show');
+        });
+    </script>
+{% endif %}
 
 
 

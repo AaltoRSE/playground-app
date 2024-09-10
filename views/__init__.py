@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============LICENSE_END==========================================================
 from functools import wraps
-from flask import render_template, redirect, send_file, abort
+from flask import render_template, redirect, send_file, abort, flash
 from objectModelPlayground.PipelineManager import PipelineManager
 import subprocess
 
@@ -22,6 +22,8 @@ import os
 import base64
 import json
 import logging
+from pathlib import Path
+import requests
 
 
 def logged_in(f):
@@ -41,6 +43,7 @@ def logged_in(f):
 logger = logging.getLogger(__name__)
 
 logger.info('LOGIN_CONFIG = '+os.environ['LOGIN_CONFIG'])
+
 if os.environ['LOGIN_CONFIG'] == 'eu-login':
     from eu_login import *
 else:
@@ -50,6 +53,10 @@ from app import app
 pathSolutionZips = "solutionZips/"
 pathSolutions = "solutions/"
 pm = PipelineManager(pathSolutions)
+
+ai_builder_federation_services = json.loads(os.environ['FEDERATION_APITOKEN'])
+if ai_builder_federation_services:
+    logger.info("AI-Builder federation service available")
 
 def get_base_dir(user, deployment):
     return os.path.join(os.getcwd(), "solutions", user, deployment)
@@ -165,6 +172,65 @@ def solution_description(file_url):
     )
     return response
 
+@app.route('/upload_execution_data', methods=['POST'])
+@logged_in
+def upload_execution_data():
+    try:
+       
+        federation_endpoint_path = os.path.join(pathSolutions, session.get('username'), get_current_deployment_id(), "source_system_url.txt") # get federation api
+        execution_run_path =  os.path.join(pathSolutions, session.get('username'), get_current_deployment_id(), "execution_run.json") # get execution_run.json path
+        blueprint_path = os.path.join(pathSolutions, session.get('username'), get_current_deployment_id(), "blueprint.json") # get blueprint.json path
+
+        if Path(federation_endpoint_path).is_file():
+            logger.info(f"{federation_endpoint_path} exists.")
+            with open(federation_endpoint_path, 'r') as endpoint:
+                federation_endpoint_url = endpoint.read().strip()  # Read and strip any surrounding whitespace
+                source_system = federation_endpoint_url.split('/')[0] + '//' + federation_endpoint_url.split('/')[2] # source sytem path to indicate the user at the end where to check the file location
+                print(f"URL found in file: {federation_endpoint_url}")
+
+            if Path(execution_run_path).is_file() and Path(blueprint_path).is_file():
+                logger.info(f"{execution_run_path} exists.")
+                with open(execution_run_path, 'rb') as execution_run_file, open(blueprint_path, 'r') as blueprint_file:
+                    execution_run_content = execution_run_file.read()
+                    blueprint_content = json.load(blueprint_file)
+                
+                headers = {'Content-Type': 'application/octet-stream', 
+                           'accept': 'application/json'}
+                
+                apiToken = next((federation_api[api_key] for federation_api in ai_builder_federation_services for api_key in federation_api if api_key == str(federation_endpoint_url)), None)
+
+                params = {
+
+                    "fullId" : str(blueprint_content["pipeline_id"]),
+                    "origin": str(blueprint_content["pipeline_id"]), 
+                    "apiToken": apiToken
+
+                }
+                
+                # we use requests instead of send_file () because we post it to another server
+                response = requests.post(os.path.join(federation_endpoint_url, "set_execution_run_data"), headers= headers, params=params, data = execution_run_content)
+                if response.status_code == 200:
+                    logger.info("File uploaded successfully.")
+                    logger.info(f"Response: {response.text}")
+                    flash(f'File uploaded successfully!', 'success')
+
+
+                else:
+                    logger.info(f"Failed to upload file. Status code: {response.status_code}")
+                    logger.info(f"Response: {response.text}")  
+                    flash('Failed to upload file.', 'danger')
+
+            else:
+                logger.info(f"The file to be uploaded does not exist: {execution_run_path}")
+
+        else:
+            logger.info(f"{federation_endpoint_path} does not exist.")
+
+    except Exception as e:
+        pass
+
+    
+    return redirect(url_for('dashboard', system_url=source_system))
 
 @app.route('/reset', methods=['GET','POST'])
 @logged_in
