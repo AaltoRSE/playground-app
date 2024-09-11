@@ -9,6 +9,10 @@
     "login_config": "dev-login",
     "name_kubernetes_pull_secret":"acumos-registry",
     "path_kubernetes_pull_secret":"~/.docker/config.json",
+    "ai_builder_federation_services":[
+		{"federation_system_url_1" :	"your_apiToken"},
+        {"federation_system_url_1" :	"your_apiToken"}
+	],
     "environment_variables": [
         {"docker_image_pattern":  "dockerhub/project/a.*", "name":  "CREDENTIALS", "value":  "12345"},
         {"docker_image_pattern":  "dockerhub/project/b.*", "name":  "UPDATES", "value":  "daily"}
