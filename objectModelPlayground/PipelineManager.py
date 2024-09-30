@@ -87,6 +87,7 @@ class PipelineManager:
                 if not os.path.isdir(path_solutions):
                     continue
                 pipeline_ids.extend(os.listdir(path_solutions))
+            return pipeline_ids
         else:
             path_solutions = self.pathSolutions + user_name
             if not os.path.isdir(path_solutions):
