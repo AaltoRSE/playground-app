@@ -4,6 +4,7 @@ from kubernetes import client, config
 class K8sClient:
     _core_instance = None
     _apps_instance = None
+    _networking_instance = None
 
     @staticmethod
     def get_core_v1_api():
