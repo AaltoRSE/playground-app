@@ -219,6 +219,8 @@ class Pipeline:
             try:
                 port_web_ui = self._get_web_ui_port(pod=pod)
                 port_web_address = self._get_web_ui_address(pod=pod)
+                logger.info(f"port_web_ui: {port_web_ui}")
+                logger.info(f"port_web_address: {port_web_address}")
                 if port_web_ui is None:
                     logger.info(f"WebUI for pod {pod['Nodename']} is: None")
                     pod["Web-UI"] = None
