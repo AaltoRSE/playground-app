@@ -555,7 +555,7 @@ def deploy_solution():
         return response
     except Exception as e:
         logger.info(f"exception in deploy_solution: {str(e)}")
-        logger.error(e, stack_info=True))
+        logger.error(e, stack_info=True)
         response = app.response_class(
             response=f"deploy solution failed with: {str(e)}", status=500
         )
