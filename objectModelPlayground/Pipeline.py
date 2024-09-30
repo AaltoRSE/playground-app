@@ -306,9 +306,11 @@ class Pipeline:
         :return: True if the server is reachable, False otherwise.
         """
         try:
-            response = requests.get(web_url, timeout=5)
+
+            response = requests.get(f"https://{web_url}", timeout=5)
             return response.status_code == 200
         except requests.RequestException:
+
             return False
 
     def _get_pvc_name(self):
