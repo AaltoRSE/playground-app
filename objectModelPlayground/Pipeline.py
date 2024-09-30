@@ -263,8 +263,8 @@ class Pipeline:
             api_response = K8sClient.get_networking_v1_api().read_namespaced_ingress(
                 name=service_name, namespace=self.__get_namespace()
             )
-            rule = api_response.spec.rules
-            return rule.host
+            rules = api_response.spec.rules
+            return rules[0].host
         except client.exceptions.ApiException as e:
             print("Exception when calling CoreV1Api->read_namespaced_service: %s\n" % e)
 
