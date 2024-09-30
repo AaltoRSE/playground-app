@@ -116,6 +116,7 @@ class PipelineManager:
     ):
         self.__create_path_user(user_name)
         logger.info("Folder Created")
+        logger.info(f"Sollution.ip : {path_solution_zip}")
         pipeline_name = self.get_pipeline_name(path_solution_zip)
         logger.info(f"Pipeline Name: {pipeline_name}")
         user_pipeline_ids = self.get_pipeline_ids(user_name)
@@ -152,6 +153,7 @@ class PipelineManager:
         return pipeline.get_pipeline_id()
 
     def get_pipeline_name(self, path_solution_zip):
+        logger.info(f"Getting pipeline name for {path_solution_zip}")
         with tempfile.TemporaryDirectory() as temp_dir:
             if ".zip" not in path_solution_zip:
                 path_solution_zip = path_solution_zip + "/solution.zip"
