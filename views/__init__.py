@@ -547,6 +547,7 @@ def deploy_solution():
         return response
     except subprocess.CalledProcessError as cpe:
         logger.info(f"exception in deploy_solution: {str(cpe)}")
+        logger.error(cpe)
         response = app.response_class(
             response=f"deploy solution failed with: {str(cpe)}\n\n {cpe.stdout}\n\n {cpe.stderr}",
             status=500,
@@ -554,6 +555,7 @@ def deploy_solution():
         return response
     except Exception as e:
         logger.info(f"exception in deploy_solution: {str(e)}")
+        logger.error(cpe)
         response = app.response_class(
             response=f"deploy solution failed with: {str(e)}", status=500
         )
