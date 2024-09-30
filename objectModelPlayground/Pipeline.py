@@ -664,10 +664,10 @@ class Pipeline:
             zip_ref.extractall(path_solution_extracted)
 
     def __delete_namespace(self):
-        logger.info(f"Deleting namespace: {self.__get_namespace()}")
+        namespace = self.__get_namespace()
+        logger.info(f"Deleting namespace: {namespace}")
         try:
             # Invoke the delete_namespace API.
-            namespace = K8sClient.get_core_v1_api()
             K8sClient.get_core_v1_api().delete_namespace(name=namespace)
             while True:
                 try:
