@@ -263,12 +263,8 @@ class Pipeline:
             api_response = K8sClient.get_networking_v1_api().read_namespaced_ingress(
                 name=service_name, namespace=self.__get_namespace()
             )
-            logger.info(f"api_response: {api_response}")
-            rules = api_response.spec.rules
-            logger.info(f"rules: {rules}")
-            for rule in api_response.spec.rules:
-                if "host" in rule:
-                    return rule.host
+            rule = api_response.spec.rules
+            return rule.host
         except client.exceptions.ApiException as e:
             print("Exception when calling CoreV1Api->read_namespaced_service: %s\n" % e)
 
