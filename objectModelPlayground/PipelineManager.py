@@ -163,8 +163,11 @@ class PipelineManager:
             with zipfile.ZipFile(path_solution_zip, "r") as zip_ref:
                 logger.info(f"Zip file opened")
                 zip_ref.extractall(temp_dir)
-                logger.info(f"Zip extracted")
+                logger.info(
+                    f"Zip extracted, loading {os.path.join(temp_dir, 'blueprint.json')}"
+                )
                 blueprint_json = json.loads(os.path.join(temp_dir, "blueprint.json"))
+
                 logger.info(
                     f"Blueprint read: {os.path.join(temp_dir, 'blueprint.json')}"
                 )
