@@ -78,7 +78,7 @@ class PipelineManager:
             pipeline_ids += self.get_pipeline_ids(user_name=user_name)
         return pipeline_ids
 
-    def get_pipeline_ids(self, user_name):
+    def get_pipeline_ids(self, user_name=None):
         if user_name is None:
             path_solution_names = os.listdir(self.pathSolutions)
             pipeline_ids = []
