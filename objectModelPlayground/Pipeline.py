@@ -330,17 +330,17 @@ class Pipeline:
                 "unique_deployment_per_solution" in self.__config
                 and self.__config["unique_deployment_per_solution"]
             ):
-                # Do some cleanup.
+                # Do some cleanup before deploying
                 self.__delete_path_solution_directory()
                 self.__delete_namespace()
-            else:
-                self.__create_path_solution_directory()
-                self.__extract_solution_zip(self.__get_path_solution_user_pipeline())
-                self.__log_big_function(function="_createPipeline")
-                self.__create_namespace()
-                logger.info("__runKubernetesClientScript()..")
-                self.__run_kubernetes_client_script()
-                self.__run_jupyter_deployment_script()
+
+            self.__create_path_solution_directory()
+            self.__extract_solution_zip(self.__get_path_solution_user_pipeline())
+            self.__log_big_function(function="_createPipeline")
+            self.__create_namespace()
+            logger.info("__runKubernetesClientScript()..")
+            self.__run_kubernetes_client_script()
+            self.__run_jupyter_deployment_script()
 
             logger.info("__runKubernetesClientScript() done!")
         except Exception as e:
