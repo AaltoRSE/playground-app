@@ -155,11 +155,18 @@ class PipelineManager:
     def get_pipeline_name(self, path_solution_zip):
         logger.info(f"Getting pipeline name for {path_solution_zip}")
         with tempfile.TemporaryDirectory() as temp_dir:
+            logger.info(f"Temp File created")
             if ".zip" not in path_solution_zip:
+                logger.info(f"Solution Zip updated")
                 path_solution_zip = path_solution_zip + "/solution.zip"
+                logger.info(f"Solution Zip updated")
             with zipfile.ZipFile(path_solution_zip, "r") as zip_ref:
+                logger.info(f"Zip file opened")
                 zip_ref.extractall(temp_dir)
+                logger.info(f"Zip extracted")
                 blueprint_json = json.loads(os.path.join(temp_dir, "blueprint.json"))
+                logger.info(f"Blueprint read: {os.path.join(temp_dir, "blueprint.json")}")
+                logger.info(f"Blueprint read")
                 return blueprint_json["name"].lower()
 
     def remove_pipeline(self, user_name, pipeline_id):
