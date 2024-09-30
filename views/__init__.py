@@ -59,7 +59,7 @@ pathSolutionZips = "solutionZips/"
 pathSolutions = "solutions/"
 pm = PipelineManager(pathSolutions, config)
 
-ai_builder_federation_services = json.loads(os.environ["FEDERATION_APITOKEN"])
+ai_builder_federation_services = json.loads(os.environ.get("FEDERATION_APITOKEN", "{}"))
 if ai_builder_federation_services:
     logger.info("AI-Builder federation service available")
 
