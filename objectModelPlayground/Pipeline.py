@@ -263,6 +263,7 @@ class Pipeline:
             api_response = K8sClient.get_networking_v1_api().read_namespaced_ingress(
                 name=service_name, namespace=self.__get_namespace()
             )
+            logger.info(f"api_response: {api_response}")
             for rule in api_response.spec.rules:
                 if "host" in rule:
                     return rule.host
