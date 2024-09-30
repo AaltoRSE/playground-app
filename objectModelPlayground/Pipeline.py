@@ -131,8 +131,9 @@ class Pipeline:
     def get_pods_information(self):
         nodeManager = self._get_node_manager()
         podsInformation = nodeManager.get_pods_information()
+        logger.info(podsInformation)
         podsInformation = self._update_pods_information(podsInformation)
-
+        logger.info(podsInformation)
         return podsInformation
 
     def get_orchestrator(self):
@@ -226,8 +227,14 @@ class Pipeline:
                         self.__config["unique_deployment_per_solution"]
                         and port_web_address is not None
                     ):
+                        logger.info(
+                            f"WebUI for pod {pod['Nodename']} is: {port_web_address}"
+                        )
                         pod["Web-UI"] = f"{port_web_address}"
                     else:
+                        logger.info(
+                            f"WebUI for pod {pod['Nodename']} is: {port_web_ui}"
+                        )
                         pod["Web-UI"] = f"{pod.pop('hostIP')}:{port_web_ui}"
                     if self._is_jupyter(pod["Nodename"]):
                         pod["Web-UI"] = (
