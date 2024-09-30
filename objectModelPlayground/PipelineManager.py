@@ -167,7 +167,8 @@ class PipelineManager:
                 logger.info(
                     f"Zip extracted, loading {os.path.join(temp_dir, 'blueprint.json')}"
                 )
-                blueprint_json = json.loads(os.path.join(temp_dir, "blueprint.json"))
+                with open(os.path.join(temp_dir, "blueprint.json"), "r") as f:
+                    blueprint_json = json.load(f)
 
                 logger.info(
                     f"Blueprint read: {os.path.join(temp_dir, 'blueprint.json')}"
