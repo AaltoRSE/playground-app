@@ -140,6 +140,7 @@ class PipelineManager:
                 return
             if pipeline_name in user_pipeline_ids:
                 # Clean up the pipeline and reacreate is.
+                logger.info("Cleaning local pipeline")
                 self.remove_pipeline(user_name, pipeline_name)
 
         pipeline = Pipeline(

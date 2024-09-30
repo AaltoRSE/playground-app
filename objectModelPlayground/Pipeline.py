@@ -598,6 +598,7 @@ class Pipeline:
 
         try:
             orchestrator = Orchestrator(path_solution_tmp)
+            logger.info(f"{os.listdir(path_solution_tmp)}")
             namespace_name = (
                 orchestrator.get_pipeline_name().lower() + "-" + omUtils.getUUID4()
             )
@@ -606,6 +607,7 @@ class Pipeline:
                 "unique_deployment_per_solution" in self.__config
                 and self.__config["unique_deployment_per_solution"]
             ):
+                logger.info("Unique solution found. Creating namespace.")
                 # We clean up any previous and set up a new one.
                 namespace_name = orchestrator.get_pipeline_name().lower()
             logger.info("Creating namespace name done.")
