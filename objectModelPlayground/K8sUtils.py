@@ -1,5 +1,6 @@
 from kubernetes import client, config
 
+
 class K8sClient:
     _core_instance = None
     _apps_instance = None
@@ -17,3 +18,10 @@ class K8sClient:
             config.load_kube_config()
             K8sClient._apps_instance = client.AppsV1Api()
         return K8sClient._apps_instance
+
+    @staticmethod
+    def get_networking_v1_api():
+        if K8sClient._networking_instance is None:
+            config.load_kube_config()
+            K8sClient._networking_instance = client.NetworkingV1Api()
+        return K8sClient._networking_instance

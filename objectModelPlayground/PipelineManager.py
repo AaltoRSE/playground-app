@@ -15,6 +15,9 @@
 # ===============LICENSE_END==========================================================
 import os
 import logging
+import tempfile
+import zipfile
+import json
 
 from objectModelPlayground.NodeManager import NodeManager
 from objectModelPlayground.Pipeline import Pipeline
@@ -23,9 +26,11 @@ import objectModelPlayground.ObjectModelUtils as omUtils
 
 logger = logging.getLogger(__name__)
 
+
 class PipelineManager:
-    def __init__(self, pathSolutions):
+    def __init__(self, pathSolutions, configuration):
         self.pathSolutions = pathSolutions
+        self.configuration = configuration
         omUtils.mkdirRecursively(pathSolutions)
         logger.debug(f"{__name__} class initialized")
 
@@ -49,7 +54,7 @@ class PipelineManager:
         for user_name in user_names:
             pipeline_ids = self.get_pipeline_ids(user_name)
             for pipeline_id in pipeline_ids:
-                pipeline = self.get_pipeline(user_name,pipeline_id)
+                pipeline = self.get_pipeline(user_name, pipeline_id)
                 pipeline.reset()
 
     def get_user_names(self):
@@ -74,30 +79,89 @@ class PipelineManager:
         return pipeline_ids
 
     def get_pipeline_ids(self, user_name):
-        path_solutions = self.pathSolutions + user_name
-        if not os.path.isdir(path_solutions):
-            return []
-        pipeline_ids = os.listdir(path_solutions)
-        return pipeline_ids
-
+        if user_name is None:
+            path_solution_names = os.listdir(self.pathSolutions)
+            pipeline_ids = []
+            for userID in path_solution_names:
+                path_solutions = self.pathSolutions + userID
+                if not os.path.isdir(path_solutions):
+                    continue
+                pipeline_ids.extend(os.listdir(path_solutions))
+        else:
+            path_solutions = self.pathSolutions + user_name
+            if not os.path.isdir(path_solutions):
+                return []
+            pipeline_ids = os.listdir(path_solutions)
+            return pipeline_ids
 
     def get_pipeline(self, user_name, pipeline_id):
         # TODO Check if pipeline exists
-        return Pipeline(path_solutions=self.pathSolutions, pipeline_id=pipeline_id, user_name=user_name)
+        return Pipeline(
+            path_solutions=self.pathSolutions,
+            pipeline_id=pipeline_id,
+            user_name=user_name,
+            config=self.configuration,
+        )
 
     def get_nodes(self, pipeline_id):
         nodes = NodeManager(pipeline_id)
         return nodes
 
-    def create_pipeline(self, user_name, path_solution_zip, path_kubernetes_pull_secret=None, name_kubernetes_pull_secret=None):
+    def create_pipeline(
+        self,
+        user_name,
+        path_solution_zip,
+        path_kubernetes_pull_secret=None,
+        name_kubernetes_pull_secret=None,
+    ):
         self.__create_path_user(user_name)
-        pipeline = Pipeline(path_solutions=self.pathSolutions, user_name=user_name, path_solution_zip=path_solution_zip, path_kubernetes_pull_secret=path_kubernetes_pull_secret, name_kubernetes_pull_secret=name_kubernetes_pull_secret)
+        pipeline_name = self.get_pipeline_name(path_solution_zip)
+        user_pipeline_ids = self.get_pipeline_ids(user_name)
+        all_pipeline_ids = self.get_pipeline_ids()
+        other_pipeline_ids = [
+            pid for pid in all_pipeline_ids if pid not in user_pipeline_ids
+        ]
+
+        if (
+            "unique_deployment_per_solution" in self.configuration
+            and self.configuration["unique_deployment_per_solution"]
+        ):
+            if pipeline_name in other_pipeline_ids:
+                logger.error(
+                    f"Pipeline with name {pipeline_name} already exists for a different user. Cannot use the same name twice!"
+                )
+                return
+            if pipeline_name in user_pipeline_ids:
+                # Clean up the pipeline and reacreate is.
+                self.remove_pipeline(user_name, pipeline_name)
+
+        pipeline = Pipeline(
+            path_solutions=self.pathSolutions,
+            user_name=user_name,
+            path_solution_zip=path_solution_zip,
+            path_kubernetes_pull_secret=path_kubernetes_pull_secret,
+            name_kubernetes_pull_secret=name_kubernetes_pull_secret,
+            config=self.configuration,
+        )
 
         return pipeline.get_pipeline_id()
 
+    def get_pipeline_name(self, path_solution_zip):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            if ".zip" not in path_solution_zip:
+                path_solution_zip = path_solution_zip + "/solution.zip"
+            with zipfile.ZipFile(path_solution_zip, "r") as zip_ref:
+                zip_ref.extractall(temp_dir)
+                blueprint_json = json.loads(os.path.join(temp_dir, "blueprint.json"))
+                return blueprint_json["name"].lower()
+
     def remove_pipeline(self, user_name, pipeline_id):
-        if(self.__is_pipeline_existent(user_name, pipeline_id)):
-            pipeline = Pipeline(path_solutions=self.pathSolutions, pipeline_id=pipeline_id, user_name=user_name)
+        if self.__is_pipeline_existent(user_name, pipeline_id):
+            pipeline = Pipeline(
+                path_solutions=self.pathSolutions,
+                pipeline_id=pipeline_id,
+                user_name=user_name,
+            )
             pipeline.remove_pipeline()
         else:
             logger.error("User %s does not have pipeline %s", user_name, pipeline_id)
