@@ -223,7 +223,7 @@ class Pipeline:
                     pod["Web-UI"] = None
                 else:
                     if (
-                        self.__config.unique_deployment_per_solution
+                        self.__config["unique_deployment_per_solution"]
                         and port_web_address is not None
                     ):
                         pod["Web-UI"] = f"{port_web_address}"
