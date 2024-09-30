@@ -21,6 +21,7 @@ import subprocess
 import os
 import base64
 import json
+import traceback
 import logging
 from pathlib import Path
 import requests
@@ -556,6 +557,8 @@ def deploy_solution():
     except Exception as e:
         logger.info(f"exception in deploy_solution: {str(e)}")
         logger.error(e, stack_info=True)
+        logger.error(e.with_traceback())
+        logger.error(traceback.format_exc())
         response = app.response_class(
             response=f"deploy solution failed with: {str(e)}", status=500
         )
