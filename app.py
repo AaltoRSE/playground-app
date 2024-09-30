@@ -27,7 +27,9 @@ config_file_path = "config.json"
 config = import_config(config_file_path)
 app = Flask(__name__)
 os.environ['LOGIN_CONFIG'] = "dev-login" if config.get("login_config") is None else config.get("login_config")
-os.environ['FEDERATION_APITOKEN'] = json.dumps(config.get("ai_builder_federation_services")) if config.get("ai_builder_federation_services") else "" 
+if config.get("ai_builder_federation_services"):
+    os.environ['FEDERATION_APITOKEN'] = json.dumps(config.get("ai_builder_federation_services"))
+  
 from views import *
 
 if __name__ == "__main__":
