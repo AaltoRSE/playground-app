@@ -262,7 +262,7 @@ class Pipeline:
     def _get_web_ui_address(self, pod):
         container_name = pod["Nodename"]
         service_name = container_name + "webuiingress"
-
+        logger.info(f"trying to retrieve URL for {service_name}")
         webui_url = self._get_ingress_url(service_name=service_name)
 
         return str(webui_url) if self.__test_url(webui_url) else None
@@ -273,6 +273,7 @@ class Pipeline:
                 name=service_name, namespace=self.__get_namespace()
             )
             rules = api_response.spec.rules
+            logger.info(f"URL is: {rules[0].host}")
             return rules[0].host
         except client.exceptions.ApiException as e:
             print("Exception when calling CoreV1Api->read_namespaced_service: %s\n" % e)
