@@ -602,7 +602,6 @@ class Pipeline:
             namespace_name = (
                 orchestrator.get_pipeline_name().lower() + "-" + omUtils.getUUID4()
             )
-            self.__remove_path_solution(path_solution_tmp)
             if (
                 "unique_deployment_per_solution" in self.__config
                 and self.__config["unique_deployment_per_solution"]
@@ -610,6 +609,7 @@ class Pipeline:
                 logger.info("Unique solution found. Creating namespace.")
                 # We clean up any previous and set up a new one.
                 namespace_name = orchestrator.get_pipeline_name().lower()
+            self.__remove_path_solution(path_solution_tmp)
             logger.info("Creating namespace name done.")
             return namespace_name
         except Exception as e:
