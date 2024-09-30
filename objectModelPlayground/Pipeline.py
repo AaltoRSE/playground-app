@@ -671,12 +671,15 @@ class Pipeline:
             K8sClient.get_core_v1_api().delete_namespace(name=namespace)
             while True:
                 try:
+                    logger.info(f"Getting namespace status")
                     ns = K8sClient.get_core_v1_api().read_namespace(name=namespace)
+                    logger.info(f"Status: {ns}")
                     if ns.status.phase != "Terminating":
                         logger.info(
                             f"Namespace '{namespace}' is still in phase: {ns.status.phase}"
                         )
                 except client.exceptions.ApiException as e:
+                    logger.info(f"Exception when checking namespace status: {e}")
                     if e.status == 404:
                         logger.info(f"Namespace '{namespace}' has been deleted.")
                         return
