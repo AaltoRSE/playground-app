@@ -264,6 +264,8 @@ class Pipeline:
                 name=service_name, namespace=self.__get_namespace()
             )
             logger.info(f"api_response: {api_response}")
+            rules = api_response.spec.rules
+            logger.info(f"rules: {rules}")
             for rule in api_response.spec.rules:
                 if "host" in rule:
                     return rule.host
@@ -674,11 +676,9 @@ class Pipeline:
                 try:
                     logger.info(f"Getting namespace status")
                     ns = K8sClient.get_core_v1_api().read_namespace(name=namespace)
-                    logger.info(f"Status: {ns}")
-                    if ns.status.phase != "Terminating":
-                        logger.info(
-                            f"Namespace '{namespace}' is still in phase: {ns.status.phase}"
-                        )
+                    logger.info(
+                        f"Namespace '{namespace}' is still in phase: {ns.status.phase}"
+                    )
                 except client.exceptions.ApiException as e:
                     logger.info(f"Exception when checking namespace status: {e}")
                     if e.status == 404:
