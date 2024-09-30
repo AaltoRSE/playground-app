@@ -115,9 +115,13 @@ class PipelineManager:
         name_kubernetes_pull_secret=None,
     ):
         self.__create_path_user(user_name)
+        logger.info("Folder Created")
         pipeline_name = self.get_pipeline_name(path_solution_zip)
+        logger.info(f"Pipeline Name: {pipeline_name}")
         user_pipeline_ids = self.get_pipeline_ids(user_name)
+        logger.info(f"User Pipelines: {user_pipeline_ids}")
         all_pipeline_ids = self.get_pipeline_ids()
+        logger.info(f"All Pipelines: {all_pipeline_ids}")
         other_pipeline_ids = [
             pid for pid in all_pipeline_ids if pid not in user_pipeline_ids
         ]
@@ -126,6 +130,7 @@ class PipelineManager:
             "unique_deployment_per_solution" in self.configuration
             and self.configuration["unique_deployment_per_solution"]
         ):
+            logger.info("Creating unique deployment for solution")
             if pipeline_name in other_pipeline_ids:
                 logger.error(
                     f"Pipeline with name {pipeline_name} already exists for a different user. Cannot use the same name twice!"
