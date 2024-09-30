@@ -18,6 +18,7 @@ import shlex
 import zipfile
 import subprocess
 import glob
+import time
 import socket
 import yaml
 import logging
@@ -665,10 +666,22 @@ class Pipeline:
     def __delete_namespace(self):
         try:
             # Invoke the delete_namespace API.
-            api_response = K8sClient.get_core_v1_api().delete_namespace(
-                name=self.__get_namespace()
-            )
-            logger.info("Namespace deleted. status='%s'" % str(api_response.status))
+            namespace = K8sClient.get_core_v1_api()
+            api_response = K8sClient.get_core_v1_api().delete_namespace(name=namespace)
+            while time.time() - start_time < timeout:
+                try:
+                    ns = K8sClient.get_core_v1_api().read_namespace(name=namespace)
+                    if ns.status.phase != "Terminating":
+                        print(
+                            f"Namespace '{namespace}' is still in phase: {ns.status.phase}"
+                        )
+                except client.exceptions.ApiException as e:
+                    if e.status == 404:
+                        print(f"Namespace '{namespace}' has been deleted.")
+                        return
+                    else:
+                        print(f"Exception when checking namespace status: {e}")
+                time.sleep(5)
         except client.exceptions.ApiException as e:
             logger.error("Exception when calling CoreV1Api->delete_namespace: %s\n" % e)
 
