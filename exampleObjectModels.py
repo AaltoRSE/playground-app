@@ -15,12 +15,15 @@
 # ===============LICENSE_END==========================================================
 from objectModelPlayground.PipelineManager import PipelineManager
 from objectModelPlayground.Pipeline import Pipeline
+from config_importer import import_config
 import pprint
 
-pathSolutions = "solutions/"
-pm = PipelineManager(pathSolutions)
+config = import_config("config.json")
 
-solutionID ="pipelinemicrostr"
+pathSolutions = "solutions/"
+pm = PipelineManager(pathSolutions, config)
+
+solutionID = "pipelinemicrostr"
 userName = "User1"
 
 

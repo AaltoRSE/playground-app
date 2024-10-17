@@ -5,6 +5,8 @@ from kubernetes import client, config
 # to run, activate your virtualenv, cd to playground-app, then python -m scripts.cleanup_all_solutions
 
 from objectModelPlayground.PipelineManager import PipelineManager
+from config_importer import import_config
+
 
 class NamespaceManager:
     def __init__(self):
@@ -14,7 +16,9 @@ class NamespaceManager:
     def _get_matching_namespaces(self, regex):
         namespaces = self.v1.list_namespace().items
         pattern = re.compile(regex)
-        return [ns.metadata.name for ns in namespaces if pattern.search(ns.metadata.name)]
+        return [
+            ns.metadata.name for ns in namespaces if pattern.search(ns.metadata.name)
+        ]
 
     def delete_namespace(self, namespace_name):
         try:
@@ -27,12 +31,14 @@ class NamespaceManager:
         print("Namespaces to be deleted:")
         print(namespace_names)
 
-        if len(sys.argv)>1 and sys.argv[1]=='-y':
-            assume_yes='yes'
+        if len(sys.argv) > 1 and sys.argv[1] == "-y":
+            assume_yes = "yes"
         else:
-            assume_yes = input("\nDo you really want to delete these namespaces? (yes/no): ")
+            assume_yes = input(
+                "\nDo you really want to delete these namespaces? (yes/no): "
+            )
 
-        if assume_yes == 'yes':
+        if assume_yes == "yes":
             for ns in namespace_names:
                 print(f"Deleting namespace {ns}.")
                 self.delete_namespace(ns)
@@ -51,14 +57,15 @@ class NamespaceManager:
     def delete_namespaces_solutions(self):
         # Get all namespaces by considering solution_folders
         pathSolutions = "solutions/"
-        pm = PipelineManager(pathSolutions)
+        config = import_config("config.json")
+        pm = PipelineManager(pathSolutions, config)
         pipeline_ids = pm.get_pipeline_ids_all_users()
 
         self.delete_namespaces(namespace_names=pipeline_ids)
+
 
 nm = NamespaceManager()
 nm.delete_namespaces_solutions()
 
 # REGEX_ALL_PLAYGROUND_NAMESPACES = '.*-[0-9a-f]{32}$'
 # nm.delete_namespaces_regex(REGEX_ALL_PLAYGROUND_NAMESPACES)
-
